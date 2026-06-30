@@ -50,6 +50,8 @@ def _print_qualified(qualified: list[QualifiedTrigger]) -> None:
         print(f"  [{label}]  {t.company or 'unknown'}")
         print(f"           {t.summary[:80]}")
         print(f"           secteur={t.sector}  geo={t.geography}  fonction={t.contact_function}")
+        if t.source_url:
+            print(f"           {t.source_url}")
         print()
 
 
