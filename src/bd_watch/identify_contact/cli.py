@@ -24,6 +24,11 @@ _ANGLES_BY_TYPE = {
         "Contacter directement la personne nommée ou son N+1 immédiat. "
         "Privilégier la fonction exacte du nommé (CDO → IT/digital, CFO → finance, etc.)."
     ),
+    "executive_hire": (
+        "Nomination : une personne vient d'être nommée à un poste clé. "
+        "Contacter directement la personne nommée ou son N+1 immédiat. "
+        "Privilégier la fonction exacte du nommé (CDO → IT/digital, CFO → finance, etc.)."
+    ),
     "m&a": (
         "Banque d'affaires : nous vendons du conseil en M&A, "
         "financement et accompagnement de l'expansion internationale. "
@@ -40,6 +45,10 @@ _ANGLES_BY_TYPE = {
     "press_article": (
         "Signal presse : une actualité notable concerne l'entreprise. "
         "Viser le décideur le plus directement lié au sujet de l'article."
+    ),
+    "press_release": (
+        "Communiqué de presse : l'entreprise annonce une initiative stratégique. "
+        "Viser le décideur le plus directement lié au sujet annoncé."
     ),
 }
 
