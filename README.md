@@ -30,8 +30,9 @@ management. Install it once: `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 uv sync                                # create .venv, install deps + dev tools
 cp .env.example .env                   # then fill in your keys
 
-uv run python -m bd_watch.pipeline     # run the pipeline on sample data
-uv run pytest                          # run the test suite
+uv run python -m bd_watch.pipeline --qualify-only 2>/dev/null  # signaux qualifiés (steps 01+02)
+uv run python -m bd_watch.pipeline                             # pipeline complet (steps 01→05)
+uv run pytest                                                  # tests
 ```
 
 ### Nominations scraper (Step 01 — RSS)
