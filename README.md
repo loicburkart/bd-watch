@@ -21,6 +21,27 @@ step through the shared schemas in `src/bd_watch/schemas.py`.
 
 `pipeline.py` wires the steps together end to end.
 
+## Feeders — two front doors, one drafter
+
+There are two ways a reason-to-reach-out enters the system. Both converge on the same
+`DraftRequest`, so the single drafter (step 04) handles them with no special-casing —
+it adapts purely through the `relationship` field on the contact. See
+`src/bd_watch/feeders.py`.
+
+| Feeder | Source | Use case | Relationship |
+|--------|--------|----------|--------------|
+| `cold_feeder` | External triggers (news, press, appointments) via steps 01→03 | **Cold contact** — no prior relationship | `cold` |
+| `activation_feeder` | The CRM deal export (`.csv` / `.xlsx`) | **Database activation** — re-engage known contacts on quiet deals | `dormant` / `existing_client` |
+
+`activation_feeder` reads each deal row and grounds the trigger in the *real*
+interaction history and recent-discussion summary, so the draft references the actual
+last exchange rather than a generic proof point. A deal quiet for ≥ 14 days is treated
+as `dormant`, otherwise `existing_client`. Point it at your export with
+`CRM_EXPORT_PATH` (defaults to the anonymized `data/samples/crm_deals_sample.csv`).
+
+> The real CRM export contains client data and is **not** committed. Keep it local and
+> set `CRM_EXPORT_PATH`, or use the anonymized sample.
+
 ## 04 — Drafting Pipeline (LLM Core)
 
 Step 04 (`src/bd_watch/steps/step04_draft.py`) is the core LLM engine of the platform. It takes the output from previous stages (the `DraftRequest`) and generates the final Email and LinkedIn messages. The logic functions as follows:
@@ -51,6 +72,7 @@ bd-watch/
 ├── src/bd_watch/
 │   ├── config.py        # env + settings
 │   ├── schemas.py       # shared data contracts between steps
+│   ├── feeders.py       # two feeders (cold + activation) -> DraftRequest
 │   ├── pipeline.py      # orchestrator + CLI entrypoint
 │   └── steps/           # one module per pipeline step (stubs to fill in)
 ├── data/samples/        # sample inputs for local runs
