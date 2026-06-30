@@ -31,3 +31,6 @@ htmlcov/
 # Local data (keep samples, ignore scratch)
 data/scratch/
 *.local.json
+
+# Generated review outputs (may contain real client data)
+reviews/

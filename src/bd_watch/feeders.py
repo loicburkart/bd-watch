@@ -37,8 +37,9 @@ logger = logging.getLogger(__name__)
 
 # A deal quiet for at least this many days is treated as dormant rather than active.
 DORMANT_AFTER_DAYS = 14
-# Default writing language for CRM-sourced contacts (flip to "fr" if preferred).
-DEFAULT_LANGUAGE = "en"
+# Default writing language for CRM-sourced contacts. The CRM accounts are French, so
+# the activation use case defaults to French (flip to "en" if preferred).
+DEFAULT_LANGUAGE = "fr"
 # Keep the grounding context bounded so prompts stay lean.
 MAX_SUMMARY_CHARS = 800
 
@@ -94,8 +95,13 @@ def _row_to_request(
 ) -> DraftRequest | None:
     company = _get(row, "Company")
     name = _get(row, "Contact Name")
+    deal_id = _get(row, "#")
+
     if not company and not name:
         return None  # skip blank rows
+    # Real deals are numbered 1..N. Non-numeric "#" rows are legends/footers, not deals.
+    if not deal_id or _to_int(deal_id) is None:
+        return None
 
     role = _get(row, "Contact Role")
     scope = _get(row, "Scope of Discussion")
@@ -105,7 +111,6 @@ def _row_to_request(
     history = _get(row, "Interaction History")
     recent = _get(row, "Summary of Recent Discussions")
     extra = _get(row, "Additional Info")
-    deal_id = _get(row, "#") or "?"
 
     # Build a grounded trigger summary from the real CRM context.
     parts: list[str] = []
