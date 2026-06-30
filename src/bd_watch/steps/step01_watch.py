@@ -77,6 +77,12 @@ def _from_rss() -> list[RawSignal]:
     return fetch_nominations(config, lookback_hours=settings.rss_lookback_hours)
 
 
+def _from_press() -> list[RawSignal]:
+    from ..scrapers.press import fetch_press_signals  # noqa: PLC0415
+    from ..scrapers.rss import load_config  # noqa: PLC0415
+    return fetch_press_signals(load_config(), lookback_hours=settings.rss_lookback_hours)
+
+
 # --------------------------------------------------------------------------- #
 # Public API
 # --------------------------------------------------------------------------- #
@@ -86,6 +92,7 @@ def detect_triggers() -> list[Trigger]:
     signals: list[RawSignal] = []
     signals += _from_mergermarket()
     signals += _from_rss()
+    signals += _from_press()
 
     if signals:
         return [_raw_to_trigger(s) for s in signals]

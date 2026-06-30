@@ -24,11 +24,24 @@ rss_queries:
   - "nomination PDG France"
   - "nommé DSI France"
   - "nommé DRH France"
+  # French — fonctions / intitulés de poste
+  - "nommé directeur marketing France"
+  - "nommé directeur supply chain France"
+  - "nommé directeur commercial France"
+  - "nommé directeur de la stratégie France"
+  # French — data / IA / transformation
+  - "nommé Chief Data Officer France"
+  - "nommé directeur data France"
+  - "nommé directeur intelligence artificielle France"
+  - "nommé Head of Data France"
+  - "nommé directeur de la transformation France"
   # English — for NORAM / North East Asia coverage
   - "appointed Chief Digital Officer"
   - "appointed Chief Technology Officer"
   - "appointed Chief Marketing Officer"
   - "appointed Chief Financial Officer"
+  - "appointed Chief Data Officer"
+  - "appointed Chief AI Officer"
   - "named CEO France"
   - "appointed director France"
 
@@ -661,3 +674,78 @@ target_geographies:
     - spain
     - italie
     - italy
+
+# ---------------------------------------------------------------------------
+# PRESSE & M&A (consommé par src/bd_watch/scrapers/press.py)
+# ---------------------------------------------------------------------------
+
+press_google_queries:
+  # M&A food / agroalimentaire (P1)
+  - "acquisition agroalimentaire France"
+  - "fusion acquisition food France"
+  - "rachat entreprise alimentaire France"
+  - "LBO agroalimentaire France"
+  - "levée de fonds agroalimentaire"
+  - "plan stratégique agroalimentaire"
+  - "transformation entreprise alimentaire France"
+  - "food fmcg acquisition deal"
+  - "merger acquisition food beverage"
+  # M&A autres secteurs (P2 : retail / distribution / luxe / santé)
+  - "acquisition retail France"
+  - "fusion acquisition distribution France"
+  - "acquisition luxe cosmétique France"
+  - "acquisition santé pharma France"
+  # Data × secteur (filon Emerton Data)
+  - "stratégie data agroalimentaire"
+  - "stratégie IA agroalimentaire"
+  - "stratégie data retail France"
+  - "intelligence artificielle distribution France"
+  - "stratégie data entreprise France"
+  - "transformation data France"
+
+press_direct_sources:
+  - name: "Actusnews Wire"
+    url: "https://www.actusnews.com/fr/rss"
+    enabled: true
+
+ma_keywords_fr:
+  - acquisition
+  - fusion
+  - rachat
+  - cession
+  - LBO
+  - "levée de fonds"
+  - "prise de participation"
+  - OPA
+  - "private equity"
+  - cède
+  - acquiert
+  - reprend
+
+ma_keywords_en:
+  - acquisition
+  - merger
+  - buyout
+  - takeover
+  - stake
+  - raises
+  - acquires
+
+strategy_keywords_fr:
+  - "plan stratégique"
+  - transformation
+  - restructuration
+  - développement
+  - réorganisation
+  - "feuille de route"
+
+data_keywords_fr:
+  - "stratégie data"
+  - "stratégie ia"
+  - "stratégie intelligence artificielle"
+  - "intelligence artificielle"
+  - "gouvernance des données"
+  - "data-driven"
+  - "transformation data"
+  - "chief data officer"
+  - "data strategy"
