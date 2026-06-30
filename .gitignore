@@ -34,3 +34,8 @@ data/scratch/
 
 # Generated review outputs (may contain real client data)
 reviews/
+
+# Real CRM exports — client data, never commit
+Deal_Reminders_vLightNoEmail.xlsx
+Deal_Reminders_v5NoEmails.xlsx
+Deal_Reminders_*.xlsx

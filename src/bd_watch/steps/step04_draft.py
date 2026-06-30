@@ -58,19 +58,21 @@ PRINCIPLES
 3. One idea, one call-to-action. The goal is a reply, not a sale.
 4. Brevity. Email: 90-130 words. LinkedIn: 45-75 words.
 5. Credibility through proof, not adjectives. Cite one concrete proof point rather than "recognised leader".
-6. Human tone. Write the way a senior partner writes to a peer: direct, respectful, zero flattery.
-7. LinkedIn vs Email: LinkedIn is a distinct channel. Treat it as a shorter, slightly less formal touchpoint. Do not simply copy-paste the email.
-8. Multiple recipients: the email is ONE shared message greeting all named recipients together. LinkedIn is strictly 1-to-1 — write a separate, distinct message for each recipient (do not reuse the same text).
+6. Register. Emerton is a top-tier strategy & data consulting firm; write accordingly. Formal, precise, corporate, restrained. The tone of a senior partner addressing a senior executive — never casual, effusive, or salesy. In French, use vouvoiement throughout and formal salutations ("Bonjour Madame X," / "Bonjour Monsieur Y,").
+7. Perspective & factual accuracy. The interaction history is Emerton's INTERNAL CRM record, written from our side. Internal steps — our meetings, our colleagues (e.g. the Emerton account owner), our deck sends, our follow-ups, our internal proposal drafts — are OUR actions. Never imply the recipient performed, attended, requested, or is even aware of an internal step. Reference only what the input explicitly attributes to the recipient (e.g. "your message of 12 June", "the presentation you attended"). When ownership of an action is unclear, omit it rather than guess. A proposal "sent internally" has NOT been sent to the client.
+8. LinkedIn vs Email: LinkedIn is a distinct channel — shorter and self-contained. Do not copy-paste the email.
+9. Multiple recipients: the email is ONE shared message greeting all named recipients together. LinkedIn is strictly 1-to-1 — write a separate, distinct message for each recipient (do not reuse the same text). Do not attribute one recipient's statements or actions to another.
 
 ADAPTATION GUIDELINES
 {adaptation_rules}
 
 DO NOT
 - No empty superlatives ("must-have", "disruptive", "world leader").
-- No flattery ("I admire your work").
+- No flattery ("I admire your work") and no effusive openers ("ravi", "super", "j'espère que vous allez bien"). No exclamation marks.
+- No casual or breezy phrasing, no sales clichés ("aucune pression de notre part", "au plaisir d'échanger", "quick win"). Stay measured and executive.
 - No paragraph about Emerton. One credibility sentence maximum.
 - No attachment or link unless genuinely useful.
-- No fabrication: use only the facts provided in the input. If something is missing, do not invent it.
+- No fabrication: use only facts in the input. In particular, do NOT attribute to the recipient any meeting, action, request, statement, or knowledge that the input does not explicitly attribute to them (see principle 7). When in doubt, omit.
 - No clickbait or all-caps subject line.
 - Do NOT include a closing signature in the email body (do not append "Best, Name - Company" or similar). The system will add it automatically!
 
@@ -216,10 +218,17 @@ def _parse_linkedin(raw: object, recipients: list[str]) -> list[LinkedInDraft]:
 def _parse_llm_json(text: str) -> dict:
     """Extract the JSON object from a model response, tolerating prose / code fences."""
     cleaned = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.MULTILINE).strip()
-    start, end = cleaned.find("{"), cleaned.rfind("}")
-    if start == -1 or end == -1:
+    start = cleaned.find("{")
+    if start == -1:
         raise ValueError("No JSON object found in LLM response.")
-    return json.loads(cleaned[start : end + 1])
+    
+    decoder = json.JSONDecoder()
+    try:
+        obj, _ = decoder.raw_decode(cleaned[start:])
+        return obj
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse JSON: {e}")
+
 
 
 def _cap_confidence(current: str, ceiling: str) -> str:
@@ -265,42 +274,72 @@ def _validate(draft: OutreachDraft) -> OutreachDraft:
 # Main entry point
 # --------------------------------------------------------------------------- #
 
+def _call_databricks(system: str, instruction: str) -> str:
+    """Call a Databricks serving endpoint (OpenAI-compatible chat completions)."""
+    from openai import OpenAI
+
+    host = settings.databricks_host.rstrip("/")
+    client = OpenAI(api_key=settings.databricks_token, base_url=f"{host}/serving-endpoints")
+    resp = client.chat.completions.create(
+        model=settings.databricks_endpoint,
+        max_tokens=MAX_TOKENS,
+        temperature=TEMPERATURE,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": instruction},
+        ],
+    )
+    return resp.choices[0].message.content or ""
+
+
+def _call_anthropic(system: str, instruction: str) -> str:
+    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    resp = client.messages.create(
+        model=settings.model,
+        max_tokens=MAX_TOKENS,
+        temperature=TEMPERATURE,
+        system=system,
+        messages=[{"role": "user", "content": instruction}],
+    )
+    return resp.content[0].text
+
+
+def _assemble(out: dict, req: DraftRequest) -> OutreachDraft:
+    """Turn parsed model JSON into a validated OutreachDraft (signature appended)."""
+    email = out.get("email", {})
+    signoff = "Bien à vous," if req.contact.language.lower() == "fr" else "Best,"
+    body = f"{email.get('body', '')}\n\n{signoff}\n{req.assets.sender_name} — {req.assets.sender_title}"
+    generated = OutreachDraft(
+        email=Email(subject=email.get("subject", ""), body=body, cta=email.get("cta", "")),
+        linkedin=_parse_linkedin(out.get("linkedin"), req.recipients),
+        rationale=out.get("rationale", ""),
+        confidence=out.get("confidence", "low"),
+        flags=list(out.get("flags", [])),
+    )
+    return _validate(generated)
+
+
 def draft(req: DraftRequest) -> OutreachDraft:
-    """Produce a validated email + LinkedIn message for the request."""
-    if not settings.has_llm or anthropic is None:
-        logger.warning("No ANTHROPIC_API_KEY or anthropic SDK; returning mock draft.")
+    """Produce a validated email + LinkedIn message for the request.
+
+    Provider priority: Databricks serving endpoint -> Anthropic API -> mock fallback.
+    """
+    system = SYSTEM_PROMPT.format(adaptation_rules=_build_adaptation_rules(req))
+    instruction = _build_instruction(req)
+
+    if settings.has_databricks:
+        provider = "databricks"
+    elif settings.has_llm and anthropic is not None:
+        provider = "anthropic"
+    else:
+        logger.warning("No LLM backend configured (Databricks or Anthropic); returning mock draft.")
         return _validate(_mock_draft(req))
 
     try:
-        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        system = SYSTEM_PROMPT.format(adaptation_rules=_build_adaptation_rules(req))
-        resp = client.messages.create(
-            model=settings.model,
-            max_tokens=MAX_TOKENS,
-            temperature=TEMPERATURE,
-            system=system,
-            messages=[{"role": "user", "content": _build_instruction(req)}],
-        )
-        out = _parse_llm_json(resp.content[0].text)
-        email = out.get("email", {})
-        email_body = email.get("body", "")
-        signoff = "Bien à vous," if req.contact.language.lower() == "fr" else "Best,"
-        assembled_body = f"{email_body}\n\n{signoff}\n{req.assets.sender_name} — {req.assets.sender_title}"
-
-        generated = OutreachDraft(
-            email=Email(
-                subject=email.get("subject", ""),
-                body=assembled_body,
-                cta=email.get("cta", ""),
-            ),
-            linkedin=_parse_linkedin(out.get("linkedin"), req.recipients),
-            rationale=out.get("rationale", ""),
-            confidence=out.get("confidence", "low"),
-            flags=list(out.get("flags", [])),
-        )
-        return _validate(generated)
+        text = _call_databricks(system, instruction) if provider == "databricks" else _call_anthropic(system, instruction)
+        return _assemble(_parse_llm_json(text), req)
     except Exception:
-        logger.exception("step04: LLM call or parsing failed; falling back to mock.")
+        logger.exception("step04: %s call or parsing failed; falling back to mock.", provider)
         return _validate(_mock_draft(req))
 
 

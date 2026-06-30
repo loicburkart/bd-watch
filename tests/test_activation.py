@@ -283,7 +283,9 @@ def _force_live(monkeypatch, payload=_PAYLOAD):
     monkeypatch.setattr(
         step04_draft,
         "settings",
-        types.SimpleNamespace(has_llm=True, anthropic_api_key="test", model="test-model"),
+        types.SimpleNamespace(
+            has_databricks=False, has_llm=True, anthropic_api_key="test", model="test-model"
+        ),
     )
 
 

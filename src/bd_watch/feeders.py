@@ -80,9 +80,15 @@ def activation_feeder(path: str | None = None) -> list[DraftRequest]:
     assets = load_emerton_assets()
     style = load_style_reference()
     requests: list[DraftRequest] = []
+    seen: set[tuple[str, str]] = set()
     for row in _read_rows(path):
-        reqs = _row_to_request(row, assets, style)
-        requests.extend(reqs)
+        for req in _row_to_request(row, assets, style):
+            key = (req.contact.company.lower(), req.contact.full_name.lower())
+            if key in seen:
+                logger.info("Skipping duplicate CRM contact: %s @ %s", req.contact.full_name, req.contact.company)
+                continue
+            seen.add(key)
+            requests.append(req)
     return requests
 
 
@@ -94,17 +100,22 @@ def _row_to_request(
     row: dict[str, str], assets: EmertonAssets, style: StyleReference
 ) -> list[DraftRequest]:
     company = _get(row, "Company")
-    names_raw = _get(row, "Contact Name")
+    names_raw = _full_name(row)
     deal_id = _get(row, "#")
 
+    # Skip rows with no identifiable contact or company (placeholder/junk rows), and
+    # non-numeric "#" rows (legends/footers). A message needs a real recipient.
     if not company and not names_raw:
-        return []  # skip blank rows
-    # Real deals are numbered 1..N. Non-numeric "#" rows are legends/footers, not deals.
+        return []
+    if not names_raw:
+        return []
     if not deal_id or _to_int(deal_id) is None:
         return []
 
     role = _get(row, "Contact Role")
     scope = _get(row, "Scope of Discussion")
+    priority = _get(row, "Priority")
+    next_step = _get(row, "Next Step")
     last_action = _get(row, "Last Action")
     last_date = _norm_date(_get(row, "Last Action Date"))
     days = _to_int(_get(row, "Days Since"))
@@ -112,20 +123,26 @@ def _row_to_request(
     recent = _get(row, "Summary of Recent Discussions")
     extra = _get(row, "Additional Info")
 
-    # Build a grounded trigger summary from the real CRM context.
-    parts: list[str] = []
+    # Build a grounded trigger summary from the real CRM context. This is Emerton's
+    # INTERNAL record (our perspective): the drafter must attribute internal steps to
+    # us, not to the contact (see step 04, principle 7).
+    parts: list[str] = ["[Emerton internal CRM record — our perspective, not necessarily known to the contact]"]
     if scope:
         parts.append(f"Open topic: {scope}.")
+    if priority:
+        parts.append(f"Internal priority: {priority}.")
     if days is not None:
-        parts.append(f"{days} days since the last contact.")
+        parts.append(f"{days} days since our last contact.")
+    if next_step:
+        parts.append(f"Our intended next step: {next_step}")
     if last_action:
-        parts.append(f"Last action: {last_action}.")
+        parts.append(f"Our last action: {last_action}.")
     if recent:
-        parts.append(f"Recent discussions: {recent}")
+        parts.append(f"Our summary of recent discussions: {recent}")
     if history:
-        parts.append(f"History: {history}")
+        parts.append(f"Our interaction log: {history}")
     if extra:
-        parts.append(f"Context: {extra}")
+        parts.append(f"Our notes: {extra}")
     summary = " ".join(parts)[:MAX_SUMMARY_CHARS] or f"Re-engage {company}."
 
     relationship = (
@@ -133,7 +150,7 @@ def _row_to_request(
         if days is None or days >= DORMANT_AFTER_DAYS
         else Relationship.EXISTING_CLIENT
     )
-    salience = Salience.HIGH if days is not None and 7 <= days <= 30 else Salience.MEDIUM
+    salience = _salience_from(priority, days)
 
     trigger = Trigger(
         type=TriggerType.DORMANT_RELATIONSHIP,
@@ -208,8 +225,33 @@ def _split_names(raw: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+# Values that mean "empty" in the export (placeholder dashes, etc.).
+_PLACEHOLDERS = {"", "—", "–", "-", "n/a", "na", "tbd", "."}
+
+
 def _get(row: dict[str, str], key: str) -> str:
-    return (row.get(key) or "").strip()
+    v = (row.get(key) or "").strip()
+    return "" if v.lower() in _PLACEHOLDERS else v
+
+
+def _full_name(row: dict[str, str]) -> str:
+    """Contact name from either a single 'Contact Name' column or First/Last columns."""
+    single = _get(row, "Contact Name")
+    if single:
+        return single
+    parts = [_get(row, "First Name"), _get(row, "Last Name")]
+    return " ".join(p for p in parts if p).strip()
+
+
+def _salience_from(priority: str, days: int | None) -> Salience:
+    p = priority.lower()
+    if p.startswith("p1"):
+        return Salience.HIGH
+    if p.startswith("p2"):
+        return Salience.MEDIUM
+    if p.startswith(("p3", "p4")):
+        return Salience.LOW
+    return Salience.HIGH if days is not None and 7 <= days <= 30 else Salience.MEDIUM
 
 
 def _to_int(value: str) -> int | None:

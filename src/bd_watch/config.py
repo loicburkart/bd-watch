@@ -22,6 +22,11 @@ class Settings:
     anthropic_api_key: str = os.environ.get("ANTHROPIC_API_KEY", "")
     model: str = os.environ.get("BD_WATCH_MODEL", "claude-sonnet-4-6")
 
+    # Databricks serving endpoint (OpenAI-compatible). Preferred when fully set.
+    databricks_host: str = os.environ.get("DATABRICKS_HOST", "")
+    databricks_token: str = os.environ.get("DATABRICKS_TOKEN", "")
+    databricks_endpoint: str = os.environ.get("DATABRICKS_ENDPOINT", "")
+
     crm_api_base: str = os.environ.get("CRM_API_BASE", "")
     crm_api_key: str = os.environ.get("CRM_API_KEY", "")
     # CRM deal export consumed by the activation feeder (.csv or .xlsx).
@@ -31,6 +36,10 @@ class Settings:
     @property
     def has_llm(self) -> bool:
         return bool(self.anthropic_api_key)
+
+    @property
+    def has_databricks(self) -> bool:
+        return bool(self.databricks_host and self.databricks_token and self.databricks_endpoint)
 
 
 settings = Settings()

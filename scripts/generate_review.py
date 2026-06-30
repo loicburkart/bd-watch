@@ -71,11 +71,27 @@ def main() -> None:
         print(f"No deals found in {args.export!r}. Nothing to generate.", file=sys.stderr)
         sys.exit(1)
 
-    mode = "LIVE (Claude)" if settings.has_llm else "MOCK (no API key)"
-    blocks = []
-    for req in requests:
-        reviewed = step05_review.review(step04_draft.draft(req))
-        blocks.append(_render(req, reviewed))
+    if settings.has_databricks:
+        mode = "LIVE (Databricks)"
+    elif settings.has_llm:
+        mode = "LIVE (Anthropic)"
+    else:
+        mode = "MOCK (no LLM configured)"
+    import concurrent.futures
+
+    blocks = [None] * len(requests)
+    
+    def _process(i_req):
+        i, req = i_req
+        print(f"[{dt.datetime.now():%H:%M:%S}] Processing deal {i+1}/{len(requests)}: {req.contact.company}...")
+        res = step05_review.review(step04_draft.draft(req))
+        print(f"[{dt.datetime.now():%H:%M:%S}] Finished deal {i+1}/{len(requests)}: {req.contact.company}!")
+        return i, _render(req, res)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        for i, rendered in executor.map(_process, enumerate(requests)):
+            blocks[i] = rendered
+
 
     header = (
         f"# Activation drafts — for review\n\n"
