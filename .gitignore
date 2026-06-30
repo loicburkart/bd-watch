@@ -31,8 +31,8 @@ htmlcov/
 data/scratch/
 *.local.json
 
-# Nominations module — runtime outputs (never commit live data)
-nominations_module/output/*.json
+# Triggers module — runtime outputs (never commit live data)
+triggers_module/output/*.json
 
 # Playwright Chrome profile (session cookies — never commit)
 chrome_profile/

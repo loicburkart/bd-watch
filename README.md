@@ -38,7 +38,7 @@ uv run pytest                                                  # tests
 ### Nominations scraper (Step 01 — RSS)
 
 ```bash
-cd nominations_module
+cd triggers_module
 python nominations_scraper.py --dry-run   # fetch + display, no file written
 python nominations_scraper.py             # writes output/nominations_today.json
 ```

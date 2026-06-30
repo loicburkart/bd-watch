@@ -38,7 +38,7 @@ from ..schemas import RawSignal
 # Paths & constants
 # ---------------------------------------------------------------------------
 
-_DEFAULT_CONFIG = Path(__file__).parents[3] / "nominations_module" / "targeting_config.yaml"
+_DEFAULT_CONFIG = Path(__file__).parents[3] / "triggers_module" / "targeting_config.yaml"
 
 _GOOGLE_NEWS_URL = "https://news.google.com/rss/search?q={query}&hl=fr&gl=FR&ceid=FR:fr"
 _USER_AGENT = "Mozilla/5.0 (compatible; BD-Watch/1.0)"
