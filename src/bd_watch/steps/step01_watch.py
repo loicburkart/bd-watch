@@ -7,6 +7,7 @@ Inputs:  none (pulls from configured sources via config)
 Outputs: list[Trigger]
 
 Sources currently wired:
+- Google News RSS (nominations) — always active, requires feedparser + pyyaml
 - MergerMarket (Playwright scraper) — set MERGERMARKET_URL in .env to activate
 """
 
@@ -67,6 +68,12 @@ def _from_mergermarket() -> list[RawSignal]:
     )
 
 
+def _from_rss() -> list[RawSignal]:
+    from ..scrapers.rss import fetch_nominations, load_config  # noqa: PLC0415
+    config = load_config()
+    return fetch_nominations(config, lookback_hours=24)
+
+
 # --------------------------------------------------------------------------- #
 # Public API
 # --------------------------------------------------------------------------- #
@@ -75,7 +82,7 @@ def detect_triggers() -> list[Trigger]:
     """Return candidate reasons to reach out from all configured sources."""
     signals: list[RawSignal] = []
     signals += _from_mergermarket()
-    # Future sources: signals += _from_rss(), _from_gmail(), ...
+    signals += _from_rss()
 
     if signals:
         return [_raw_to_trigger(s) for s in signals]
