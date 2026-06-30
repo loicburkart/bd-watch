@@ -6,6 +6,56 @@ Monitors our CRM, client news and the sector press to spot reasons to reach out 
 press article, a new appointment, a dormant relationship — then identifies the right
 contact and drafts a personalised outreach message in the right tone.
 
+---
+
+## 📨 The deliverable: `emerton-message-drafter` (Claude Skill)
+
+The **drafting step (04)** of this pipeline ships as a standalone, installable **Claude Skill** — the
+primary deliverable. It runs **inside Claude** (desktop / Cowork): no API key, no server, no code to
+run. Give it an Excel of contacts and it writes, per contact, one **email** + one **LinkedIn message**,
+in the right language, in Emerton's formal register, grounded **strictly** in each row's facts and
+laid out **email-ready** (subject / greeting / paragraphs / CTA / signature on their own lines). Output
+is a **review document for a human — it never sends.**
+
+**→ Full skill documentation: [`skills/emerton-message-drafter/README.md`](skills/emerton-message-drafter/README.md)**
+(install steps, usage, output format, the binding `drafting_rules.md`, and per-shape input schemas.)
+
+### Three input shapes (auto-detected by columns)
+
+| Shape | What it is | Reference |
+|-------|-----------|-----------|
+| **Known clients** | CRM deal export — re-engage/activate (`Interaction History`, `Days Since`). | [`input_known_clients.md`](skills/emerton-message-drafter/references/input_known_clients.md) |
+| **New prospects** | Cold leads tied to an external trigger. | [`input_new_prospects.md`](skills/emerton-message-drafter/references/input_new_prospects.md) |
+| **Lost deals** | Lost-deal post-mortem — re-engage after a loss (`Deal Info`, `Post-Mortem Context`, `Suggested Next Step`). | [`input_lost_deals.md`](skills/emerton-message-drafter/references/input_lost_deals.md) |
+
+### Install & use
+
+1. Install the packaged skill: in Claude desktop / Cowork → **Customize → Skills → "+"**, upload
+   [`skills/emerton-message-drafter.skill`](skills/emerton-message-drafter.skill). (Rebuild after edits:
+   `cd skills && zip -r emerton-message-drafter.skill emerton-message-drafter -x '*/__pycache__/*'`.)
+2. In a chat, attach a contacts Excel and say *"Draft outreach from this file."*
+3. The skill asks **once** for: the **sender** (name + title — always required at launch, no default),
+   the **default language** (FR/EN), and the **output location**, then produces the review document.
+
+### ⚠️ Non-negotiable warnings (full version in the skill's `drafting_rules.md`)
+
+- **Never auto-send.** Every draft is for human review.
+- **No fabrication.** Use only facts in the row — never invent a figure, percentage, result, client
+  name, or meeting. A number may appear only if it is verbatim in the input.
+- **Perspective discipline.** Interaction history is *Emerton's internal record*; never attribute our
+  meetings/colleagues/internal steps to the recipient. A proposal "sent internally" was not sent to them.
+- **Lost deals — never mention the loss.** No rejection, lost date, deal amount, competitor guesses,
+  internal colleague names or phone numbers. `Post-Mortem Context` / `Suggested Next Step` set the angle
+  only — never quoted. Don't draft `archive_candidate` / `no_contact` rows; honour `hold_until` timing.
+- **Sender is supplied each run** — never hardcoded, carried over, or invented; placeholder until given.
+- **One shared email per row; one distinct 1-to-1 LinkedIn per recipient.** Formal register, vouvoiement
+  in French, no exclamation marks. Language-aware length: EN email 90–130 / LinkedIn 45–75; FR 80–120 / 40–70.
+
+> The skill is self-contained and usable on its own, but is designed as the final **draft** stage after
+> the upstream steps (watch → qualify → contact). See the pipeline below.
+
+---
+
 ## Pipeline
 
 The system runs as a sequence of steps, each owned by a teammate. Data flows step to
