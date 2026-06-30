@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "leads": [
+    {
+      "lead_id": "cold-2026-0001",
+      "trigger": {
+        "type": "new_appointment",
+        "summary": "Marie Dupont has just been appointed Chief Data Officer of Acme Retail.",
+        "source_url": "https://www.linkedin.com/posts/acme-retail-cdo-announcement",
+        "date": "2026-06-28",
+        "company": "Acme Retail",
+        "salience": "high",
+        "evidence": "LinkedIn announcement, 1.2k reactions; reposted by Acme Retail corporate page."
+      },
+      "contact": {
+        "full_name": "Marie Dupont",
+        "title": "Chief Data Officer",
+        "company": "Acme Retail",
+        "seniority": "C-level",
+        "language": "en",
+        "relationship": "cold",
+        "linkedin_url": "https://www.linkedin.com/in/marie-dupont",
+        "last_interaction": null,
+        "known_priorities": ["data roadmap", "AI value creation"]
+      }
+    },
+    {
+      "lead_id": "cold-2026-0002",
+      "trigger": {
+        "type": "funding_round",
+        "summary": "NovaPharma raised a EUR 80M Series C to scale its R&D data platform across Europe.",
+        "source_url": "https://techpress.example/novapharma-series-c",
+        "date": "2026-06-25",
+        "company": "NovaPharma",
+        "salience": "high",
+        "evidence": "Press release + TechCrunch coverage; quotes the VP Data on platform scale-up."
+      },
+      "contact": {
+        "full_name": "James Okafor",
+        "title": "VP Data & Analytics",
+        "company": "NovaPharma",
+        "seniority": "VP",
+        "language": "en",
+        "relationship": "cold",
+        "linkedin_url": "https://www.linkedin.com/in/james-okafor",
+        "last_interaction": null,
+        "known_priorities": ["scaling data platform", "R&D analytics"]
+      }
+    },
+    {
+      "lead_id": "cold-2026-0003",
+      "trigger": {
+        "type": "press_article",
+        "summary": "Banque Méridien annonce un plan de mise en conformité IA avant l'entrée en vigueur de l'AI Act.",
+        "source_url": "https://lesechos.example/banque-meridien-ai-act",
+        "date": "2026-06-22",
+        "company": "Banque Méridien",
+        "salience": "medium",
+        "evidence": "Interview de la Directrice Gouvernance des données dans Les Échos."
+      },
+      "contact": {
+        "full_name": "Sophie Lefèvre",
+        "title": "Director of Data Governance",
+        "company": "Banque Méridien",
+        "seniority": "Director",
+        "language": "fr",
+        "relationship": "cold",
+        "linkedin_url": "https://www.linkedin.com/in/sophie-lefevre",
+        "last_interaction": null,
+        "known_priorities": ["AI governance", "regulatory compliance"]
+      }
+    }
+  ]
+}
