@@ -17,7 +17,9 @@ in the right language, in Emerton's formal register, grounded **strictly** in ea
 laid out **email-ready** (subject / greeting / paragraphs / CTA / signature on their own lines). Output
 is a **review document for a human — it never sends.**
 
-**→ Full skill documentation: [`skills/emerton-message-drafter/README.md`](skills/emerton-message-drafter/README.md)**
+**→ All hackathon skills index: [`skills/README.md`](skills/README.md)** — every skill the team built
+(Watch · Qualify · Contact · Draft · Review), with owners, locations and status.
+**→ Message-drafter docs: [`skills/emerton-message-drafter/README.md`](skills/emerton-message-drafter/README.md)**
 (install steps, usage, output format, the binding `drafting_rules.md`, and per-shape input schemas.)
 
 ### Three input shapes (auto-detected by columns)
