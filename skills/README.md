@@ -55,17 +55,18 @@ flowchart LR
 - **Review** (skill 05) is the internal send-gate after the Drafter — a guardrail, not a functional block,
   so it isn't drawn above.
 
-> **Packaging status.** Only the **message drafter** is currently packaged as an installable Claude
-> Skill (`emerton-message-drafter/` + `.skill`). The other stages live as Python modules / CLIs on
-> their feature branches and are being consolidated onto `main`. This index documents all of them so
-> the team has one place to see what exists, where it lives, and what state it's in.
+> **Packaging status.** Two stages are now packaged as installable Claude Skills: the **signal watch**
+> (`emerton-signal-watch/` + `.skill`, covering Watch + Qualify) and the **message drafter**
+> (`emerton-message-drafter/` + `.skill`). The remaining stages (Contact, CRM) live as Python modules /
+> CLIs on their feature branches and are being consolidated onto `main`. This index documents all of them
+> so the team has one place to see what exists, where it lives, and what state it's in.
 
 ## The skills at a glance
 
 | # | Skill | Architecture block | What it does | Owner | Lives in | Status |
 |---|-------|--------------------|--------------|-------|----------|--------|
-| 01 | **Watch / Triggers** | Google News (RSS) + Actu News (API) → News Aggregator | Scans news sources (nominations, appointments, funding) for reasons to reach out and aggregates them into raw signals/triggers. | Benjamin | branch `feat/nominations-module`: `triggers_module/`, `src/bd_watch/scrapers/`, `steps/step01_watch.py` | Implemented (RSS live; press/MergerMarket scrapers) |
-| 02 | **Qualify / Targeting matrix** | Prospection Priority Matrix | Scopes & prioritises *what is worth watching* and scores triggers on the 3-axis matrix (offer × sector × geography → P1–P4). | team | `steps/step02_qualify.py` + `targeting_matrix.json` / `targeting_config.yaml` | Matrix defined; scoring being wired (currently naive salience) |
+| 01 | **Watch / Triggers** | Google News (RSS) + Actu News (API) → News Aggregator | Scans news sources (nominations, appointments, funding) for reasons to reach out and aggregates them into raw signals/triggers. | Benjamin | `triggers_module/`, `src/bd_watch/scrapers/`, `steps/step01_watch.py` — **packaged with Qualify in `emerton-signal-watch/`** | ✅ Packaged (`emerton-signal-watch`); RSS live |
+| 02 | **Qualify / Targeting matrix** ⭐ | Prospection Priority Matrix | Scopes & prioritises *what is worth watching* and scores triggers on the 3-axis matrix (sector × geography × function → P1–P3, worst-axis rule + P1-sector bypass). | Benjamin | `steps/step02_qualify.py` + `targeting_matrix.json` — **packaged in `emerton-signal-watch/`** | ✅ Packaged & matrix scoring live |
 | 03 | **Contact identification** | PEOPLE ID (Lusha, Web) | From a signal, deduces the target profile, finds candidates via **Lusha + web scraping**, ranks them with an LLM, enriches the top 3; checks CRM first for existing relationships. | team | branch `feature/search_contact`: `src/bd_watch/identify_contact/` | Module implemented (pipeline, reasoning, Lusha client, web fallback) |
 | — | **CRM ingestion** | CRM (HubSpot) → CRM Processor | Reads the CRM and produces the *Reminders* and *Post-mortems* streams that feed the drafter directly (and account context back to the watch). | team | `src/bd_watch/feeders.py` (activation feeder) | Activation feeder implemented |
 | 04 | **Message drafter** ⭐ | DRAFTER | Turns an Excel of contacts into review-ready outreach — one email + one 1-to-1 LinkedIn per contact, email-ready, grounded strictly in the row. | Loïc | **`emerton-message-drafter/`** (packaged `.skill`) | ✅ Packaged & merged to `main` |
@@ -87,9 +88,15 @@ next stage; scoring is intentionally **not** done here (that's Qualify).
 ## 02 — Qualify / Targeting matrix
 
 Decides *is it worth it*. Scores each trigger on Emerton's three axes — functional/offer, sector, and
-geography — to a P1–P4 priority, and filters out the noise. The matrix lives in `targeting_matrix.json`
-(and `targeting_config.yaml`); `steps/step02_qualify.py` applies it. (Currently a naive salience mapping
-is in place while the full matrix scoring is wired in.)
+geography — to a P1–P3 priority, and filters out the noise. The matrix lives in `targeting_matrix.json`
+(and `targeting_config.yaml`); `steps/step02_qualify.py` applies it (global score = worst axis, with a
+P1 sector always scoring 1.0).
+
+**Watch + Qualify are packaged together as one installable Claude Skill: [`emerton-signal-watch`](emerton-signal-watch/README.md).**
+It scrapes nominations/press and returns the qualified, scored signals (JSON/text) — no LLM, no API key.
+Install: in Claude desktop / Cowork → **Customize → Skills → "+"**, upload
+[`emerton-signal-watch.skill`](emerton-signal-watch.skill). It stops at the qualified watchlist and hands
+off to the contact + drafter skills.
 
 ## 03 — Contact identification  ·  `feature/search_contact`
 
@@ -122,9 +129,8 @@ the drafter always returns a review document.
 
 ## For the team — consolidating onto `main`
 
-- The drafter is on `main` and packaged. The Watch and Contact skills are on their branches
-  (`feat/nominations-module`, `feature/search_contact`) and need merging in; Qualify/Review live on
-  `main` as the base pipeline steps.
+- The drafter and the signal watch (Watch + Qualify) are on `main` and packaged. The Contact skill is on
+  its branch (`feature/search_contact`) and needs merging in; Review lives on `main` as a base pipeline step.
 - Keep the **shared contracts** in `src/bd_watch/schemas.py` stable — they are what let these skills stay
   independent and plug together.
 - As each stage matures, it can follow the drafter's pattern and be packaged as its own installable
