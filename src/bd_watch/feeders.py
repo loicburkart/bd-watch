@@ -116,10 +116,10 @@ def _row_to_request(
     scope = _get(row, "Scope of Discussion")
     priority = _get(row, "Priority")
     next_step = _get(row, "Next Step")
-    last_action = _get(row, "Last Action")
+    last_action = _filter_junk(_get(row, "Last Action"))
     last_date = _norm_date(_get(row, "Last Action Date"))
     days = _to_int(_get(row, "Days Since"))
-    history = _get(row, "Interaction History")
+    history = _filter_junk(_get(row, "Interaction History"))
     recent = _get(row, "Summary of Recent Discussions")
     extra = _get(row, "Additional Info")
 
@@ -189,6 +189,19 @@ def _row_to_request(
 # --------------------------------------------------------------------------- #
 # Parsing helpers
 # --------------------------------------------------------------------------- #
+
+def _filter_junk(text: str) -> str:
+    """Remove CRM administrative events from text (e.g. HubSpot updates, deal creation)."""
+    if not text:
+        return ""
+    lines = [L for L in text.splitlines() if L.strip()]
+    out = []
+    for line in lines:
+        lower = line.lower()
+        if "hubspot" in lower or "deal created" in lower or "last updated" in lower:
+            continue
+        out.append(line)
+    return "\n".join(out)
 
 def _read_rows(path: str) -> Iterable[dict[str, str]]:
     """Read a CRM export into a list of header-keyed string dicts (.csv or .xlsx)."""

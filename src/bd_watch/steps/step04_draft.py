@@ -57,7 +57,7 @@ PRINCIPLES
 2. Relevance before promotion. Show you understand the contact's challenge before mentioning Emerton.
 3. One idea, one call-to-action. The goal is a reply, not a sale.
 4. Brevity. Email: 90-130 words. LinkedIn: 45-75 words.
-5. Credibility through proof, not adjectives. Cite one concrete proof point rather than "recognised leader".
+5. Credibility through relevance, not name-dropping. Do NOT cite specific client names, results, metrics, or figures — none are provided to you and you must invent none. Establish credibility only by showing you understand the contact's situation, plus at most one general sentence about Emerton's domain (strategy and data/AI consulting). No quantified claims.
 6. Register. Emerton is a top-tier strategy & data consulting firm; write accordingly. Formal, precise, corporate, restrained. The tone of a senior partner addressing a senior executive — never casual, effusive, or salesy. In French, use vouvoiement throughout and formal salutations ("Bonjour Madame X," / "Bonjour Monsieur Y,").
 7. Perspective & factual accuracy. The interaction history is Emerton's INTERNAL CRM record, written from our side. Internal steps — our meetings, our colleagues (e.g. the Emerton account owner), our deck sends, our follow-ups, our internal proposal drafts — are OUR actions. Never imply the recipient performed, attended, requested, or is even aware of an internal step. Reference only what the input explicitly attributes to the recipient (e.g. "your message of 12 June", "the presentation you attended"). When ownership of an action is unclear, omit it rather than guess. A proposal "sent internally" has NOT been sent to the client.
 8. LinkedIn vs Email: LinkedIn is a distinct channel — shorter and self-contained. Do not copy-paste the email.
@@ -73,6 +73,8 @@ DO NOT
 - No paragraph about Emerton. One credibility sentence maximum.
 - No attachment or link unless genuinely useful.
 - No fabrication: use only facts in the input. In particular, do NOT attribute to the recipient any meeting, action, request, statement, or knowledge that the input does not explicitly attribute to them (see principle 7). When in doubt, omit.
+- Never present a proof point as the recipient's own result, and never imply Emerton has already delivered it for them or their company.
+- Never state a number, percentage, metric, or monetary figure that is not present verbatim in the provided inputs. Invent no figures; if you have no grounded figure, make the point qualitatively or omit it.
 - No clickbait or all-caps subject line.
 - Do NOT include a closing signature in the email body (do not append "Best, Name - Company" or similar). The system will add it automatically!
 
@@ -103,10 +105,8 @@ Known priorities: {priorities}
 Writing language: {language}
 Recipients (email greets all together; one LinkedIn message each): {recipients}
 
-# EMERTON ASSETS
-Relevant offer: {offer}
-Available proof points: {proof_points}
-Sender: {sender_name}, {sender_title}
+# SENDER (for the signature voice; do not add a signature — the system appends it)
+{sender_name}, {sender_title}
 
 # STYLE
 Target tone: {tone}
@@ -172,8 +172,6 @@ def _build_instruction(req: DraftRequest) -> str:
         priorities=", ".join(contact.known_priorities) or "n/a",
         language=contact.language,
         recipients=", ".join(req.recipients) or contact.full_name,
-        offer=req.assets.relevant_offer,
-        proof_points=" | ".join(req.assets.proof_points),
         sender_name=req.assets.sender_name,
         sender_title=req.assets.sender_title,
         tone=req.style.tone,
@@ -237,9 +235,53 @@ def _cap_confidence(current: str, ceiling: str) -> str:
     return _RANK_CONFIDENCE[rank]
 
 
-def _validate(draft: OutreachDraft) -> OutreachDraft:
-    """Enforce house style. Adds flags and lowers confidence; never raises confidence."""
+# Quantified claims (percentages and monetary/magnitude figures) — the kinds of numbers
+# that constitute a factual assertion. Dates, durations ("15 minutes") are ignored.
+_PCT_RE = re.compile(r"(\d{1,3}(?:[.,]\d+)?)\s?%")
+# Monetary / magnitude figures, in either order: "€80M", "EUR 80M", "80 M€", "80 millions".
+_CUR_RE = re.compile(
+    r"(?:€|eur|usd|\$)\s?(\d[\d.,]*)"
+    r"|(\d[\d.,]*)\s?(?:k€|m€|bn€|milliards?|millions?|k|m|bn|md|€|eur|usd|\$)\b",
+    re.IGNORECASE,
+)
+
+
+def _claim_numbers(text: str) -> set[str]:
+    """Extract normalised percentage and monetary figures from text.
+
+    Targets quantified *claims* (percentages, monetary amounts). Ignores durations
+    ("15 minutes") and years, which are not assertions of fact about results.
+    """
+    nums: set[str] = set()
+    for m in _PCT_RE.finditer(text or ""):
+        nums.add(m.group(1).replace(" ", "").replace(",", ".").rstrip("."))
+    for m in _CUR_RE.finditer(text or ""):
+        num = m.group(1) or m.group(2)
+        if num:
+            nums.add(num.replace(" ", "").replace(",", ".").rstrip("."))
+    return nums
+
+
+def _input_metrics(req: DraftRequest) -> set[str]:
+    """All quantified figures that legitimately appear in the inputs for this request."""
+    text = " ".join(
+        [
+            req.trigger.summary,
+            " ".join(req.contact.known_priorities),
+            req.contact.last_interaction or "",
+        ]
+    )
+    return _claim_numbers(text)
+
+
+def _validate(draft: OutreachDraft, allowed_metrics: set[str] | None = None) -> OutreachDraft:
+    """Enforce house style. Adds flags and lowers confidence; never raises confidence.
+
+    If ``allowed_metrics`` is provided, any percentage/monetary figure appearing in the
+    output but not in that set is flagged as ungrounded (likely fabricated).
+    """
     flags = list(draft.flags)
+    fabricated_metric = False
 
     email_words = _word_count(draft.email.body)
     if not EMAIL_WORDS[0] <= email_words <= EMAIL_WORDS[1]:
@@ -258,11 +300,19 @@ def _validate(draft: OutreachDraft) -> OutreachDraft:
     if not draft.email.cta.strip():
         flags.append("missing_cta")
 
+    if allowed_metrics is not None:
+        output_text = draft.email.body + " " + " ".join(li.message for li in draft.linkedin)
+        ungrounded = _claim_numbers(output_text) - allowed_metrics
+        for n in sorted(ungrounded):
+            flags.append(f"ungrounded_metric:{n}")
+            fabricated_metric = True
+
     confidence = draft.confidence
     new_flags = [f for f in flags if f not in draft.flags]
     if new_flags:
-        # One issue -> at most medium; two or more -> low.
-        ceiling = "medium" if len(new_flags) == 1 else "low"
+        # One issue -> at most medium; two or more -> low. A fabricated figure is
+        # serious on its own -> force low.
+        ceiling = "low" if (fabricated_metric or len(new_flags) >= 2) else "medium"
         confidence = _cap_confidence(confidence, ceiling)
 
     draft.flags = flags
@@ -316,7 +366,7 @@ def _assemble(out: dict, req: DraftRequest) -> OutreachDraft:
         confidence=out.get("confidence", "low"),
         flags=list(out.get("flags", [])),
     )
-    return _validate(generated)
+    return _validate(generated, _input_metrics(req))
 
 
 def draft(req: DraftRequest) -> OutreachDraft:

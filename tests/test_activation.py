@@ -315,6 +315,37 @@ def test_live_linkedin_list_preserved_per_recipient(monkeypatch, by_company):
 
 
 # --------------------------------------------------------------------------- #
+# Numeric guardrail: fabricated figures are caught and force low confidence
+# --------------------------------------------------------------------------- #
+
+_FABRICATED_PAYLOAD = {
+    "email": {
+        "subject": "Test",
+        "body": "Bonjour, nous avons généré +37% de marge pour un acteur comparable.",
+        "cta": "Un échange ?",
+    },
+    "linkedin": [{"recipient": "Camille BERNARD", "message": "Message."}],
+    "rationale": "x",
+    "confidence": "high",
+    "flags": [],
+}
+
+
+def test_fabricated_metric_is_flagged(monkeypatch, by_company):
+    # 37% appears nowhere in the inputs -> must be flagged and forced to low confidence.
+    _force_live(monkeypatch, payload=_FABRICATED_PAYLOAD)
+    out = step04_draft.draft(by_company["Aquatech Group"])
+    assert any(f.startswith("ungrounded_metric:37") for f in out.flags)
+    assert out.confidence == "low"
+
+
+def test_metric_helpers_ignore_dates_and_durations():
+    # Percentages/money are claims; "15 minutes" and years are not.
+    assert step04_draft._claim_numbers("a 15 minute call in 2026") == set()
+    assert step04_draft._claim_numbers("+12% margin and €80M round") == {"12", "80"}
+
+
+# --------------------------------------------------------------------------- #
 # Optional: run against the real export when provided
 # --------------------------------------------------------------------------- #
 

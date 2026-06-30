@@ -39,3 +39,8 @@ reviews/
 Deal_Reminders_vLightNoEmail.xlsx
 Deal_Reminders_v5NoEmails.xlsx
 Deal_Reminders_*.xlsx
+
+# Excel lock/temp + local client data exports (never commit)
+~$*
+/Deal_Reminders_*.xlsx
+/Lost_Deals_*.xlsx
