@@ -10,6 +10,51 @@ Watch → Qualify → Contact → Draft → Review
  (why now?)  (worth it?)  (who?)   (write)  (safe to send?)
 ```
 
+## Functional architecture
+
+```mermaid
+flowchart LR
+    M["Prospection Priority Matrix"]
+
+    subgraph WATCH ["News watch"]
+        GN["Google News (RSS)"]
+        AN["Actu News (API)"]
+        AGG(("News Aggregator"))
+        GN --> AGG
+        AN --> AGG
+    end
+
+    PID["PEOPLE ID (Lusha, Web)"]
+    CRM["CRM (HubSpot)"]
+    CRMP["CRM Processor"]
+    DR["DRAFTER"]
+
+    M --> WATCH
+    AGG --> PID
+    PID --> DR
+    CRM --> CRMP
+    CRMP --> WATCH
+    CRMP -- "Reminders, Post-mortems" --> DR
+
+    style DR fill:#cfe3e6,stroke:#1f3b4d,stroke-width:2px
+```
+
+> The diagram above reproduces the team's functional architecture. (To embed the original PNG instead,
+> drop it in as `skills/architecture.png` and replace this block with `![Architecture](architecture.png)`.)
+
+**How the architecture maps to the skills, and the two ways work reaches the Drafter:**
+
+- **Discovery path (cold prospects).** The **Prospection Priority Matrix** (skill 02 — Qualify) scopes
+  *who and what is worth watching*; the **News watch** (skill 01 — Google News RSS + Actu News API → a
+  **News Aggregator**) surfaces the reason to reach out; **PEOPLE ID** (skill 03 — Lusha + web) resolves
+  the right person; the **Drafter** (skill 04) writes the message. → feeds the drafter's **new-prospects** input.
+- **CRM path (existing relationships).** **CRM (HubSpot) → CRM Processor** produces two streams that go
+  **straight to the Drafter** as *"Reminders, Post-mortems"* — i.e. the drafter's **known-clients** input
+  (deal reminders / activation) and its **lost-deals** input (post-mortem re-engagement). The CRM Processor
+  also feeds account context back into the watch.
+- **Review** (skill 05) is the internal send-gate after the Drafter — a guardrail, not a functional block,
+  so it isn't drawn above.
+
 > **Packaging status.** Only the **message drafter** is currently packaged as an installable Claude
 > Skill (`emerton-message-drafter/` + `.skill`). The other stages live as Python modules / CLIs on
 > their feature branches and are being consolidated onto `main`. This index documents all of them so
@@ -17,13 +62,14 @@ Watch → Qualify → Contact → Draft → Review
 
 ## The skills at a glance
 
-| # | Skill | What it does | Owner | Lives in | Status |
-|---|-------|--------------|-------|----------|--------|
-| 01 | **Watch / Triggers** | Scans Google News RSS (nominations, appointments, funding) and MergerMarket/press for reasons to reach out; emits raw signals/triggers. | Benjamin | branch `feat/nominations-module`: `triggers_module/`, `src/bd_watch/scrapers/`, `steps/step01_watch.py` | Implemented (RSS live; MergerMarket via Playwright) |
-| 02 | **Qualify / Targeting matrix** | Scores & filters triggers on the 3-axis matrix (offer × sector × geography → P1–P4); keeps the ones worth acting on. | team | `steps/step02_qualify.py` + `targeting_matrix.json` / `targeting_config.yaml` | Matrix defined; scoring being wired (currently naive salience) |
-| 03 | **Contact identification** | From a signal, deduces the target profile, finds candidates via **Lusha + web scraping**, ranks them with an LLM, enriches the top 3; checks CRM first for existing relationships. | team | branch `feature/search_contact`: `src/bd_watch/identify_contact/` | Module implemented (pipeline, reasoning, Lusha client, web fallback) |
-| 04 | **Message drafter** ⭐ | Turns an Excel of contacts into review-ready outreach — one email + one 1-to-1 LinkedIn per contact, email-ready, grounded strictly in the row. | Loïc | **`emerton-message-drafter/`** (packaged `.skill`) | ✅ Packaged & merged to `main` |
-| 05 | **Review** | Guardrail gate: auto-send only if confidence is high and no flags; otherwise route to human review or discard. | team | `steps/step05_review.py` | Minimal rule in place |
+| # | Skill | Architecture block | What it does | Owner | Lives in | Status |
+|---|-------|--------------------|--------------|-------|----------|--------|
+| 01 | **Watch / Triggers** | Google News (RSS) + Actu News (API) → News Aggregator | Scans news sources (nominations, appointments, funding) for reasons to reach out and aggregates them into raw signals/triggers. | Benjamin | branch `feat/nominations-module`: `triggers_module/`, `src/bd_watch/scrapers/`, `steps/step01_watch.py` | Implemented (RSS live; press/MergerMarket scrapers) |
+| 02 | **Qualify / Targeting matrix** | Prospection Priority Matrix | Scopes & prioritises *what is worth watching* and scores triggers on the 3-axis matrix (offer × sector × geography → P1–P4). | team | `steps/step02_qualify.py` + `targeting_matrix.json` / `targeting_config.yaml` | Matrix defined; scoring being wired (currently naive salience) |
+| 03 | **Contact identification** | PEOPLE ID (Lusha, Web) | From a signal, deduces the target profile, finds candidates via **Lusha + web scraping**, ranks them with an LLM, enriches the top 3; checks CRM first for existing relationships. | team | branch `feature/search_contact`: `src/bd_watch/identify_contact/` | Module implemented (pipeline, reasoning, Lusha client, web fallback) |
+| — | **CRM ingestion** | CRM (HubSpot) → CRM Processor | Reads the CRM and produces the *Reminders* and *Post-mortems* streams that feed the drafter directly (and account context back to the watch). | team | `src/bd_watch/feeders.py` (activation feeder) | Activation feeder implemented |
+| 04 | **Message drafter** ⭐ | DRAFTER | Turns an Excel of contacts into review-ready outreach — one email + one 1-to-1 LinkedIn per contact, email-ready, grounded strictly in the row. | Loïc | **`emerton-message-drafter/`** (packaged `.skill`) | ✅ Packaged & merged to `main` |
+| 05 | **Review** | (internal gate, not shown) | Guardrail: auto-send only if confidence is high and no flags; otherwise route to human review or discard. | team | `steps/step05_review.py` | Minimal rule in place |
 
 Data flows through the shared typed contracts in `src/bd_watch/schemas.py`, so each skill can be built
 and run independently. `src/bd_watch/pipeline.py` wires them end to end.
@@ -33,9 +79,10 @@ and run independently. `src/bd_watch/pipeline.py` wires them end to end.
 ## 01 — Watch / Triggers  ·  `feat/nominations-module`
 
 Detects *why now*. A standalone CLI (`triggers_module/nominations_scraper.py`) fetches nomination and
-appointment news from Google News RSS (broad French/English queries in `targeting_config.yaml`, filtered
-post-fetch on target roles), with additional `scrapers/` for press and MergerMarket. Output is written
-as `RawSignal`s for the next stage; scoring is intentionally **not** done here (that's Qualify).
+appointment news from **Google News (RSS)** (broad French/English queries in `targeting_config.yaml`,
+filtered post-fetch on target roles) plus an **Actu News (API)** feed, with additional `scrapers/` for
+press and MergerMarket. A **News Aggregator** merges and de-duplicates these into `RawSignal`s for the
+next stage; scoring is intentionally **not** done here (that's Qualify).
 
 ## 02 — Qualify / Targeting matrix
 
