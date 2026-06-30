@@ -1,0 +1,7 @@
+{
+  "tone": "professional, direct, warm, no salesy jargon",
+  "past_messages": [
+    "Hi {name}, saw the news about {company} — congratulations. We've done similar work in your sector; happy to share a quick field note if useful.",
+    "Hi {name}, it's been a while since we spoke. A recent project reminded me of your situation at {company} — worth a 15-minute catch-up?"
+  ]
+}
