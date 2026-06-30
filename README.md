@@ -65,13 +65,21 @@ Step 04 (`src/bd_watch/steps/step04_draft.py`) is the core LLM engine of the pla
 
 ## Quickstart
 
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env          # then fill in your keys
+This project uses [uv](https://docs.astral.sh/uv/) for environment and dependency
+management. Install it once: `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 
-python -m bd_watch.pipeline   # runs the pipeline on sample data
+```bash
+uv sync                                # create .venv, install deps + dev tools
+cp .env.example .env                   # then fill in your keys
+
+uv run python -m bd_watch.pipeline     # run the pipeline on sample data
+uv run pytest                          # run the test suite
 ```
+
+The Python version is pinned in `.python-version`; `uv` fetches it automatically.
+Dependencies are locked in `uv.lock` — commit it, and run `uv lock` after changing
+`pyproject.toml`.
+
 
 ## Layout
 

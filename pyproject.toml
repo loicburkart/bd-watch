@@ -10,13 +10,21 @@ requires-python = ">=3.10"
 dependencies = [
     "anthropic>=0.40.0",
     "python-dotenv>=1.0.0",
+    "openpyxl>=3.1.0",
 ]
-
-[project.optional-dependencies]
-dev = ["pytest>=8.0.0", "ruff>=0.6.0"]
 
 [project.scripts]
 bd-watch = "bd_watch.pipeline:main"
+
+# Dev tooling. Installed by default with `uv sync` (PEP 735 dependency group).
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.6.0",
+]
+
+[tool.uv]
+package = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
