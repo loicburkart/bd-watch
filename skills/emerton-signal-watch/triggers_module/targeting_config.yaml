@@ -1,0 +1,751 @@
+# BD Watch — Nominations Module Configuration
+# Option B: broad queries + post-fetch filtering on target roles
+
+lookback_hours: 1440  # 60 days — overridable via RSS_LOOKBACK_HOURS env var or --lookback CLI arg
+
+# ------------------------------------------------------------------
+# Google News RSS queries
+# Broad to maximize volume; roles are filtered post-fetch.
+# Format fetched: https://news.google.com/rss/search?q={query}&hl=fr&gl=FR&ceid=FR:fr
+# ------------------------------------------------------------------
+rss_queries:
+  # French — broad
+  - "nomination directeur France"
+  - "nommé directeur France"
+  - "prend la direction France"
+  - "rejoint en tant que France"
+  # French — C-suite acronyms
+  - "nommé CDO France"
+  - "nommé CTO France"
+  - "nommé CMO France"
+  - "nommé CFO France"
+  - "nommé COO France"
+  - "nommé DG France"
+  - "nomination PDG France"
+  - "nommé DSI France"
+  - "nommé DRH France"
+  # French — fonctions / intitulés de poste
+  - "nommé directeur marketing France"
+  - "nommé directeur supply chain France"
+  - "nommé directeur commercial France"
+  - "nommé directeur de la stratégie France"
+  # French — data / IA / transformation
+  - "nommé Chief Data Officer France"
+  - "nommé directeur data France"
+  - "nommé directeur intelligence artificielle France"
+  - "nommé Head of Data France"
+  - "nommé directeur de la transformation France"
+  # English — for NORAM / North East Asia coverage
+  - "appointed Chief Digital Officer"
+  - "appointed Chief Technology Officer"
+  - "appointed Chief Marketing Officer"
+  - "appointed Chief Financial Officer"
+  - "appointed Chief Data Officer"
+  - "appointed Chief AI Officer"
+  - "named CEO France"
+  - "appointed director France"
+
+# ------------------------------------------------------------------
+# Direct RSS sources
+# Set enabled: false to skip until URL is verified
+# ------------------------------------------------------------------
+direct_rss_sources:
+  - name: "Actusnews - Communiqués"
+    url: "https://www.actusnews.com/news-rss/"
+    enabled: true
+  - name: "Les Echos - Nominations"
+    url: "https://www.lesechos.fr/rss/rss_nominations.xml"
+    enabled: false  # TBD — verify with: curl -I https://www.lesechos.fr/rss/rss_nominations.xml
+  - name: "Le Figaro - Nominations"
+    url: "https://www.lefigaro.fr/rss/figaro_nominations.xml"
+    enabled: false  # TBD — verify before enabling
+
+# ------------------------------------------------------------------
+# Target roles — post-fetch filter
+# An entry must match at least one role (or a nomination pattern) to be kept.
+# ------------------------------------------------------------------
+target_roles:
+  c_suite:
+    - CDO
+    - CTO
+    - CMO
+    - CFO
+    - COO
+    - CHRO
+    - CSO
+    - CEO
+    - CSCO
+    - CIO
+    - CCO
+  french_acronyms:
+    - DG
+    - PDG
+    - DSI
+    - DRH
+    - DAF
+    - DGA
+  seniority:
+    - VP
+    - SVP
+    - EVP
+    - "Operating Partner"
+    - "Managing Director"
+  function_directors:
+    - "directeur marketing"
+    - "directeur supply chain"
+    - "directeur logistique"
+    - "directeur financier"
+    - "directeur commercial"
+    - "directeur des opérations"
+    - "directeur innovation"
+    - "directeur digital"
+    - "directeur des systèmes d'information"
+    - "directeur stratégie"
+    - "directeur des ressources humaines"
+    - "directeur général"
+    - "vice-président"
+    - "vice président"
+
+# ------------------------------------------------------------------
+# Nomination detection patterns (applied to article title + description)
+# A match here OR a role match is required to keep an entry.
+# ------------------------------------------------------------------
+nomination_patterns_fr:
+  - "nommé"
+  - "nomination"
+  - "prend la direction"
+  - "rejoint"
+  - "intègre"
+  - "est promu"
+  - "prend ses fonctions"
+  - "nouvellement nommé"
+  - "vient d'être nommé"
+  - "a rejoint"
+
+nomination_patterns_en:
+  - "appointed"
+  - "named"
+  - "joins as"
+  - "promoted to"
+  - "takes over as"
+  - "steps up as"
+  - "new appointment"
+
+# ------------------------------------------------------------------
+# Target sectors — for scoring (P1 = max priority)
+# ------------------------------------------------------------------
+target_sectors:
+  P1:
+    - food
+    - agroalimentaire
+    - agro-alimentaire
+    - alimentation
+    - fmcg
+    - cpg
+    - "grande consommation"
+    - boissons
+    - "food & beverage"
+  P2:
+    - retail
+    - distribution
+    - "grande distribution"
+    - luxe
+    - luxury
+    - beauté
+    - cosmétiques
+    - santé
+    - healthcare
+    - pharma
+    - pharmaceutique
+
+# ------------------------------------------------------------------
+# Company → sector lookup (lowercase keys, matched against extracted company name)
+# Grows over time — add entries manually or via LLM enrichment (future).
+# Canonical sector values must match targeting_matrix.json.
+# ------------------------------------------------------------------
+company_sector_map:
+
+  # ── Food / FMCG (P1) ──────────────────────────────────────────
+  # Multinationales
+  danone: food
+  nestlé: food
+  nestle: food
+  unilever: food
+  "mars incorporated": food
+  mars: food
+  ferrero: food
+  mondelez: food
+  "kraft heinz": food
+  "general mills": food
+  kellogg: food
+  "campbell soup": food
+  conagra: food
+  hershey: food
+  lindt: food
+  "barry callebaut": food
+  cargill: food
+  adm: food
+  bunge: food
+  "associated british foods": food
+  abf: food
+  "dean foods": food
+  saputo: food
+  arla: food
+  frieslandcampina: food
+  fonterra: food
+  "royal frieslandcampina": food
+  mccormick: food
+  smucker: food
+  hormel: food
+  tyson: food
+  jbs: food
+  "pilgrim's pride": food
+  perdue: food
+  smithfield: food
+  "nhf group": food
+  # Boissons
+  "coca-cola": food
+  "pepsico": food
+  pepsi: food
+  heineken: food
+  carlsberg: food
+  "ab inbev": food
+  "anheuser-busch": food
+  diageo: food
+  "pernod ricard": food
+  "rémy cointreau": food
+  "remy cointreau": food
+  "moët hennessy": food
+  "moet hennessy": food
+  "bacardi": food
+  "beam suntory": food
+  "suntory": food
+  "fever-tree": food
+  "red bull": food
+  # Ingrédients / arômes
+  givaudan: food
+  iff: food
+  firmenich: food
+  symrise: food
+  "dsm-firmenich": food
+  dsm: food
+  # France
+  lactalis: food
+  savencia: food
+  bonduelle: food
+  "fleury michon": food
+  panzani: food
+  bel: food
+  bigard: food
+  sodiaal: food
+  andros: food
+  "st mamet": food
+  marie: food
+  picard: food
+  sodebo: food
+  "le duff": food
+  limagrain: food
+  invivo: food
+  vivescia: food
+  "la martiniquaise": food
+  "groupe roullier": food
+  terrena: food
+  cooperl: food
+  "even groupe": food
+  senoble: food
+  novandie: food
+  triballat: food
+  "charles et alice": food
+  materne: food
+  # Japon / Asie (cible NEA)
+  ajinomoto: food
+  nissin: food
+  kikkoman: food
+  meiji: food
+  morinaga: food
+  asahi: food
+  kirin: food
+  sapporo: food
+  yakult: food
+  "house foods": food
+  "calbee": food
+  # Pet food
+  "mars petcare": food
+  "nestlé purina": food
+  purina: food
+  "hill's": food
+  "royal canin": food
+  # Plant-based
+  "beyond meat": food
+  oatly: food
+  alpro: food
+  "the not company": food
+  # Restauration / foodservice
+  "compass group": food
+  "compass group france": food
+  sodexo: food
+  elior: food
+  "mcdonald's": food
+  "mcdonald": food
+  "burger king": food
+  "yum brands": food
+  "restaurant brands": food
+  sysco: food
+  "areas": food
+
+  # ── Retail / Distribution (P2) ────────────────────────────────
+  carrefour: retail
+  auchan: retail
+  casino: retail
+  intermarché: retail
+  intermarch: retail
+  itm: retail
+  "système u": retail
+  "systeme u": retail
+  lidl: retail
+  aldi: retail
+  cora: retail
+  monoprix: retail
+  franprix: retail
+  "leader price": retail
+  leclerc: retail
+  picard: retail
+  "amazon france": retail
+  amazon: retail
+  cdiscount: retail
+  veepee: retail
+  "vente-privée": retail
+  showroomprivé: retail
+  fnac: retail
+  darty: retail
+  "fnac darty": retail
+  boulanger: retail
+  leroy merlin: retail
+  decathlon: retail
+  "kingfisher": retail
+  metro: retail
+  "metro group": retail
+  sysco: retail
+
+  # ── Retail / Distribution (P2) — suite ───────────────────────
+  lego: retail
+  primark: retail
+  "primark france": retail
+  "el corte inglés": retail
+  "el corte ingles": retail
+  kiabi: retail
+  "jules": retail
+  naf: retail
+  celio: retail
+  uniqlo: retail
+  ikea: retail
+  "castorama": retail
+  "bricorama": retail
+  "point p": retail
+  "saint-gobain distribution": retail
+
+  # ── Luxe / Beauté (P2) ────────────────────────────────────────
+  lvmh: luxe
+  kering: luxe
+  hermès: luxe
+  hermes: luxe
+  chanel: luxe
+  dior: luxe
+  "louis vuitton": luxe
+  "christian dior": luxe
+  "yves saint laurent": luxe
+  gucci: luxe
+  balenciaga: luxe
+  bottega: luxe
+  "saint laurent": luxe
+  richemont: luxe
+  cartier: luxe
+  "van cleef": luxe
+  bulgari: luxe
+  bvlgari: luxe
+  swatch: luxe
+  "l'oréal": luxe
+  loreal: luxe
+  "l'oreal": luxe
+  "yves rocher": luxe
+  clarins: luxe
+  caudalie: luxe
+  nuxe: luxe
+  "pierre fabre": luxe
+  interparfums: luxe
+  "puig group": luxe
+  puig: luxe
+  coty: luxe
+  revlon: luxe
+  estee: luxe
+  "estée lauder": luxe
+  shiseido: luxe
+  "kao corporation": luxe
+  inditex: luxe
+  zara: luxe
+  "h&m": luxe
+  sandro: luxe
+  maje: luxe
+  guerlain: luxe
+  givenchy: luxe
+  "parfums christian dior": luxe
+  aeffe: luxe
+  "alexander mcqueen": luxe
+  "bottega veneta": luxe
+  "miu miu": luxe
+  prada: luxe
+  "tod's": luxe
+  fendi: luxe
+  burberry: luxe
+  "ralph lauren": luxe
+
+  # ── Santé / Pharma (P2) ───────────────────────────────────────
+  sanofi: santé
+  servier: santé
+  ipsen: santé
+  guerbet: santé
+  biomérieux: santé
+  biomerieux: santé
+  eurofins: santé
+  "pierre fabre santé": santé
+  urgo: santé
+  "laboratoire urgo": santé
+  roche: santé
+  pfizer: santé
+  novartis: santé
+  astrazeneca: santé
+  "johnson & johnson": santé
+  abbvie: santé
+  merck: santé
+  bayer: santé
+  gsk: santé
+  "glaxosmithkline": santé
+  eli lilly: santé
+  amgen: santé
+  stryker: santé
+  medtronic: santé
+  abbott: santé
+  becton: santé
+  "bd medical": santé
+  essilor: santé
+  "essilor luxottica": santé
+  "agence régionale de santé": santé
+  ars: santé
+  "santé publique france": santé
+  "haute autorité de santé": santé
+  chu: santé
+  "centre hospitalier": santé
+  "ap-hp": santé
+  aphp: santé
+  "bristol myers squibb": santé
+  "bristol-myers squibb": santé
+  atara: santé
+  regeneron: santé
+  biogen: santé
+  "vertex pharmaceuticals": santé
+  gilead: santé
+  "msd france": santé
+  lilly: santé
+  "staar surgical": santé
+  staar: santé
+
+  # ── Industrie / Automobile (P3) ───────────────────────────────
+  renault: industrie
+  "renault group": industrie
+  stellantis: industrie
+  peugeot: industrie
+  citroën: industrie
+  citroen: industrie
+  "valeo": industrie
+  faurecia: industrie
+  forvia: industrie
+  michelin: industrie
+  totalenergies: energie
+  total: energie
+  "air liquide": industrie
+  saint-gobain: industrie
+  "saint gobain": industrie
+  schneider: industrie
+  "schneider electric": industrie
+  legrand: industrie
+  "bureau veritas": industrie
+  safran: defense
+  thales: defense
+  airbus: defense
+  dassault: defense
+  naval: defense
+  "naval group": defense
+  otis: industrie
+  kone: industrie
+  schindler: industrie
+  zeekr: industrie
+  "zeekr france": industrie
+  seat: industrie
+  cupra: industrie
+  "seat france": industrie
+  hyundai: industrie
+  "hyundai france": industrie
+  kia: industrie
+  "kia france": industrie
+  ford: industrie
+  "ford france": industrie
+  bmw: industrie
+  "bmw france": industrie
+  mercedes: industrie
+  volkswagen: industrie
+  toyota: industrie
+  "toyota france": industrie
+  honda: industrie
+  nissan: industrie
+  "volvo cars": industrie
+  spie: industrie
+  "spie building solutions": industrie
+  eiffage: industrie
+  vinci: industrie
+  bouygues: industrie
+  "dhl supply chain": industrie
+  "dhl supply chain france": industrie
+  dhl: industrie
+  "fm logistic": industrie
+  "geodis": industrie
+  "la poste": industrie
+  sncf: industrie
+  "sncf voyageurs": industrie
+  "sncf réseau": industrie
+  ratp: industrie
+  "air france": industrie
+  "groupe adp": industrie
+  "bmi group": industrie
+  "bmi group france": industrie
+  marinelec: industrie
+  texa: industrie
+  "texa france": industrie
+  atlantem: industrie
+
+  # ── TMT ───────────────────────────────────────────────────────
+  orange: tmt
+  "sfr": tmt
+  bouygues: tmt
+  free: tmt
+  iliad: tmt
+  capgemini: tmt
+  sopra: tmt
+  "sopra steria": tmt
+  atos: tmt
+  eviden: tmt
+  dassault: tmt
+  sap: tmt
+  salesforce: tmt
+  "google france": tmt
+  google: tmt
+  microsoft: tmt
+  "meta france": tmt
+  meta: tmt
+  apple: tmt
+  publicis: tmt
+  havas: tmt
+  "havas media france": tmt
+  "havas media": tmt
+  "ipg mediabrands": tmt
+  dentsu: tmt
+  "dentsu france": tmt
+  zendesk: tmt
+  visma: tmt
+  "netapp": tmt
+  "netapp france": tmt
+  dell: tmt
+  "dell technologies": tmt
+  "dell technologies france": tmt
+  "dell france": tmt
+  hp: tmt
+  "hewlett packard": tmt
+  ibm: tmt
+  "ibm france": tmt
+  oracle: tmt
+  cisco: tmt
+  "cisco france": tmt
+  "exclusive networks": tmt
+  teamviewer: tmt
+  "teamviewer france": tmt
+  servicenow: tmt
+  workday: tmt
+  "box france": tmt
+  azerion: tmt
+  iqm: tmt
+  tegna: tmt
+  franceinfo: tmt
+  "france inter": tmt
+  "france télévisions": tmt
+  "france televisions": tmt
+  "tf1": tmt
+  m6: tmt
+  "groupe m6": tmt
+  "le monde": tmt
+  "le figaro": tmt
+  "les echos": tmt
+  "le progrès": tmt
+  "pagegroup": finance
+  "pagegroup france": finance
+  "michael page": finance
+  "hays france": finance
+  "adecco": finance
+  manpower: finance
+
+  # ── Assurance ─────────────────────────────────────────────────
+  generali: assurance
+  "generali france": assurance
+  "axa france": assurance
+  maif: assurance
+  macif: assurance
+  maaf: assurance
+  mma: assurance
+  allianz: assurance
+  "allianz france": assurance
+  "april group": assurance
+  covea: assurance
+  "mutuelles du mans": assurance
+  "ag2r la mondiale": assurance
+  ag2r: assurance
+  "malakoff humanis": assurance
+  "harmonie mutuelle": assurance
+  mutex: assurance
+
+  # ── Finance ───────────────────────────────────────────────────
+  "bnp paribas": finance
+  bnp: finance
+  "société générale": finance
+  "societe generale": finance
+  "crédit agricole": finance
+  "credit agricole": finance
+  natixis: finance
+  bpce: finance
+  "la banque postale": finance
+  lcl: finance
+  axa: finance
+  "groupama": finance
+  "crédit mutuel": finance
+  "credit mutuel": finance
+  "caisse d'épargne": finance
+  "banque populaire": finance
+  amundi: finance
+  carmignac: finance
+  ardian: finance
+  eurazeo: finance
+  "standard bank": finance
+  "commonwealth bank": finance
+  freetrade: finance
+  "laser (société)": finance
+
+  # ── Énergie ───────────────────────────────────────────────────
+  edf: energie
+  engie: energie
+  "gaz de france": energie
+  veolia: energie
+  suez: energie
+  "compagnie des eaux": energie
+
+# ------------------------------------------------------------------
+# Target geographies — for scoring (P1 = max priority)
+# ------------------------------------------------------------------
+target_geographies:
+  P1:
+    - france
+    - french
+    - français
+    - paris
+    - usa
+    - "états-unis"
+    - "united states"
+    - canada
+    - chine
+    - china
+    - "hong kong"
+    - japon
+    - japan
+    - corée
+    - korea
+  P2:
+    - europe
+    - "royaume-uni"
+    - uk
+    - allemagne
+    - germany
+    - espagne
+    - spain
+    - italie
+    - italy
+
+# ---------------------------------------------------------------------------
+# PRESSE & M&A (consommé par src/bd_watch/scrapers/press.py)
+# ---------------------------------------------------------------------------
+
+press_google_queries:
+  # M&A food / agroalimentaire (P1)
+  - "acquisition agroalimentaire France"
+  - "fusion acquisition food France"
+  - "rachat entreprise alimentaire France"
+  - "LBO agroalimentaire France"
+  - "levée de fonds agroalimentaire"
+  - "plan stratégique agroalimentaire"
+  - "transformation entreprise alimentaire France"
+  - "food fmcg acquisition deal"
+  - "merger acquisition food beverage"
+  # M&A autres secteurs (P2 : retail / distribution / luxe / santé)
+  - "acquisition retail France"
+  - "fusion acquisition distribution France"
+  - "acquisition luxe cosmétique France"
+  - "acquisition santé pharma France"
+  # Data × secteur (filon Emerton Data)
+  - "stratégie data agroalimentaire"
+  - "stratégie IA agroalimentaire"
+  - "stratégie data retail France"
+  - "intelligence artificielle distribution France"
+  - "stratégie data entreprise France"
+  - "transformation data France"
+
+press_direct_sources:
+  - name: "Actusnews Wire"
+    url: "https://www.actusnews.com/fr/rss"
+    enabled: true
+
+ma_keywords_fr:
+  - acquisition
+  - fusion
+  - rachat
+  - cession
+  - LBO
+  - "levée de fonds"
+  - "prise de participation"
+  - OPA
+  - "private equity"
+  - cède
+  - acquiert
+  - reprend
+
+ma_keywords_en:
+  - acquisition
+  - merger
+  - buyout
+  - takeover
+  - stake
+  - raises
+  - acquires
+
+strategy_keywords_fr:
+  - "plan stratégique"
+  - transformation
+  - restructuration
+  - développement
+  - réorganisation
+  - "feuille de route"
+
+data_keywords_fr:
+  - "stratégie data"
+  - "stratégie ia"
+  - "stratégie intelligence artificielle"
+  - "intelligence artificielle"
+  - "gouvernance des données"
+  - "data-driven"
+  - "transformation data"
+  - "chief data officer"
+  - "data strategy"
