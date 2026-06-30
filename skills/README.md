@@ -55,29 +55,42 @@ flowchart LR
 - **Review** (skill 05) is the internal send-gate after the Drafter — a guardrail, not a functional block,
   so it isn't drawn above.
 
-> **Packaging status.** Two stages are now packaged as installable Claude Skills: the **signal watch**
-> (`emerton-signal-watch/` + `.skill`, covering Watch + Qualify) and the **message drafter**
-> (`emerton-message-drafter/` + `.skill`). The remaining stages (Contact, CRM) live as Python modules /
-> CLIs on their feature branches and are being consolidated onto `main`. This index documents all of them
-> so the team has one place to see what exists, where it lives, and what state it's in.
+> **Packaging status.** Three skills are packaged as installable Claude Skills: the **signal watch**
+> (`emerton-signal-watch/`, covering Watch + Qualify), the **message drafter** (`emerton-message-drafter/`),
+> and the **orchestrator** (`emerton-bd-orchestrator/`, which runs the whole pipeline end to end). The
+> remaining stages (Contact, CRM ingestion, Review) are merged on `main` as Python modules but not yet
+> wrapped as standalone `.skill`s. One known gap on the discovery path: the **step03 contact hook still
+> returns a mock profile** (the real `identify_contact` module isn't wired into the pipeline yet). This
+> index documents all of them so the team has one place to see what exists, where it lives, and its state.
 
 ## The skills at a glance
 
 | # | Skill | Architecture block | What it does | Owner | Lives in | Status |
 |---|-------|--------------------|--------------|-------|----------|--------|
+| 00 | **Orchestrator** 🎯 | (drives the whole flow) | Single entry point: runs the full pipeline end to end (CRM path & discovery path), composes the sub-skills, applies the Review gate, and consolidates one review document + run report. | Loïc | **`emerton-bd-orchestrator/`** (packaged `.skill`) | ✅ Packaged & merged to `main` |
 | 01 | **Watch / Triggers** | Google News (RSS) + Actu News (API) → News Aggregator | Scans news sources (nominations, appointments, funding) for reasons to reach out and aggregates them into raw signals/triggers. | Benjamin | `triggers_module/`, `src/bd_watch/scrapers/`, `steps/step01_watch.py` — **packaged with Qualify in `emerton-signal-watch/`** | ✅ Packaged (`emerton-signal-watch`); RSS live |
 | 02 | **Qualify / Targeting matrix** ⭐ | Prospection Priority Matrix | Scopes & prioritises *what is worth watching* and scores triggers on the 3-axis matrix (sector × geography × function → P1–P3, worst-axis rule + P1-sector bypass). | Benjamin | `steps/step02_qualify.py` + `targeting_matrix.json` — **packaged in `emerton-signal-watch/`** | ✅ Packaged & matrix scoring live |
-| 03 | **Contact identification** | PEOPLE ID (Lusha, Web) | From a signal, deduces the target profile, finds candidates via **Lusha + web scraping**, ranks them with an LLM, enriches the top 3; checks CRM first for existing relationships. | team | branch `feature/search_contact`: `src/bd_watch/identify_contact/` | Module implemented (pipeline, reasoning, Lusha client, web fallback) |
-| — | **CRM ingestion** | CRM (HubSpot) → CRM Processor | Reads the CRM and produces the *Reminders* and *Post-mortems* streams that feed the drafter directly (and account context back to the watch). | team | `src/bd_watch/feeders.py` (activation feeder) | Activation feeder implemented |
+| 03 | **Contact identification** | PEOPLE ID (Lusha, Web) | From a signal, deduces the target profile, finds candidates via **Lusha + web scraping**, ranks them with an LLM, enriches the top 3; checks CRM first for existing relationships. | team | `src/bd_watch/identify_contact/` (module) + `steps/step03_contact.py` (hook) | Module merged; **pipeline hook still returns a mock** — wiring pending |
+| — | **CRM ingestion** | CRM (HubSpot) → CRM Processor | Reads the CRM and produces the *Reminders* and *Post-mortems* streams that feed the drafter directly (and account context back to the watch). | team | `src/bd_watch/feeders.py` (activation feeder) | Working |
 | 04 | **Message drafter** ⭐ | DRAFTER | Turns an Excel of contacts into review-ready outreach — one email + one 1-to-1 LinkedIn per contact, email-ready, grounded strictly in the row. | Loïc | **`emerton-message-drafter/`** (packaged `.skill`) | ✅ Packaged & merged to `main` |
-| 05 | **Review** | (internal gate, not shown) | Guardrail: auto-send only if confidence is high and no flags; otherwise route to human review or discard. | team | `steps/step05_review.py` | Minimal rule in place |
+| 05 | **Review** | (internal gate, not shown) | Guardrail: auto-send only if confidence is high and no flags; otherwise route to human review or discard. | team | `steps/step05_review.py` | Merged; minimal rule in place |
 
 Data flows through the shared typed contracts in `src/bd_watch/schemas.py`, so each skill can be built
 and run independently. `src/bd_watch/pipeline.py` wires them end to end.
 
 ---
 
-## 01 — Watch / Triggers  ·  `feat/nominations-module`
+## 00 — Orchestrator 🎯  ·  packaged Claude Skill
+
+The single entry point that **runs the whole pipeline** and returns one consolidated review document +
+run report. It picks the path (**CRM** = Excel → Draft → Review, working today; **discovery** = Watch →
+Qualify → Contact → Draft → Review), runs each available stage through the shared `schemas.py` contracts,
+**delegates drafting to `emerton-message-drafter`** (never re-implements it), applies the Review gate, and
+degrades gracefully — flagging the mocked contact hook (`contact_unverified`) and never fabricating to fill
+a gap. **→ [`emerton-bd-orchestrator/README.md`](emerton-bd-orchestrator/README.md)**
+· stage contracts & availability in [`emerton-bd-orchestrator/references/pipeline.md`](emerton-bd-orchestrator/references/pipeline.md).
+
+## 01 — Watch / Triggers  ·  *packaged in `emerton-signal-watch`*
 
 Detects *why now*. A standalone CLI (`triggers_module/nominations_scraper.py`) fetches nomination and
 appointment news from **Google News (RSS)** (broad French/English queries in `targeting_config.yaml`,
@@ -98,12 +111,13 @@ Install: in Claude desktop / Cowork → **Customize → Skills → "+"**, upload
 [`emerton-signal-watch.skill`](emerton-signal-watch.skill). It stops at the qualified watchlist and hands
 off to the contact + drafter skills.
 
-## 03 — Contact identification  ·  `feature/search_contact`
+## 03 — Contact identification  ·  *module merged on `main` (hook not yet wired)*
 
 Decides *who to address*. `src/bd_watch/identify_contact/` is a full module:
 `signal → deduce target profile → candidates (Lusha + web scraping) → LLM ranking → enrich top 3`, with a
 CRM check first so an existing/dormant relationship is reactivated rather than treated as cold. Produces
-a `ContactProfile` for the drafter.
+a `ContactProfile` for the drafter. **Note:** the pipeline hook `steps/step03_contact.py` still returns a
+placeholder profile — wiring it to this module is the main remaining gap on the discovery path.
 
 ## 04 — Message drafter ⭐  ·  packaged Claude Skill
 
@@ -129,8 +143,10 @@ the drafter always returns a review document.
 
 ## For the team — consolidating onto `main`
 
-- The drafter and the signal watch (Watch + Qualify) are on `main` and packaged. The Contact skill is on
-  its branch (`feature/search_contact`) and needs merging in; Review lives on `main` as a base pipeline step.
+- The signal watch (Watch + Qualify), the message drafter, and the orchestrator are on `main` and packaged
+  as installable skills. The Contact module is merged on `main` too, but its pipeline hook
+  (`steps/step03_contact.py`) still returns a placeholder — wiring it to `identify_contact` is the main
+  remaining gap. Review lives on `main` as a base pipeline step.
 - Keep the **shared contracts** in `src/bd_watch/schemas.py` stable — they are what let these skills stay
   independent and plug together.
 - As each stage matures, it can follow the drafter's pattern and be packaged as its own installable
