@@ -48,7 +48,7 @@ def main() -> None:
     print(f"[BD Watch] Nominations scraper — {run_at}", file=sys.stderr)
 
     config = load_config(args.config)
-    lookback = args.lookback or config.get("lookback_hours", 24)
+    lookback = args.lookback or config.get("lookback_hours", 1440)
     print(f"[BD Watch] Config: {args.config}  Lookback: {lookback}h", file=sys.stderr)
 
     print("[BD Watch] Fetching feeds...", file=sys.stderr)

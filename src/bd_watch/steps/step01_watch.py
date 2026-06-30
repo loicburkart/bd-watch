@@ -48,6 +48,9 @@ def _raw_to_trigger(sig: RawSignal) -> Trigger:
         source_url=sig.url,
         date=sig.date,
         company=sig.company,
+        sector=sig.sector,
+        geography=sig.geography,
+        contact_function=sig.contact_function,
         salience=Salience.HIGH,
     )
 
@@ -57,7 +60,7 @@ def _raw_to_trigger(sig: RawSignal) -> Trigger:
 # --------------------------------------------------------------------------- #
 
 def _from_mergermarket() -> list[RawSignal]:
-    if not settings.mergermarket_url:
+    if not settings.mergermarket_enabled or not settings.mergermarket_url:
         return []
     from ..scrapers.mergermarket import scrape  # noqa: PLC0415
     return scrape(
@@ -71,7 +74,7 @@ def _from_mergermarket() -> list[RawSignal]:
 def _from_rss() -> list[RawSignal]:
     from ..scrapers.rss import fetch_nominations, load_config  # noqa: PLC0415
     config = load_config()
-    return fetch_nominations(config, lookback_hours=24)
+    return fetch_nominations(config, lookback_hours=settings.rss_lookback_hours)
 
 
 # --------------------------------------------------------------------------- #
@@ -95,6 +98,9 @@ def detect_triggers() -> list[Trigger]:
             source_url="https://linkedin.com/posts/acme-retail-cdo",
             date="2026-06-28",
             company="Acme Retail",
+            sector="food",
+            geography="france",
+            contact_function="it",
             salience=Salience.HIGH,
         )
     ]

@@ -1,34 +1,65 @@
 """Step 02 — Qualify.
 
-Score and filter triggers; keep the ones worth acting on.
+Score triggers against the 3D targeting matrix (targeting_matrix.json).
+Rule: global score = min(sector_score, geo_score, function_score).
+A trigger must be P1 on all 3 axes to reach the default threshold.
 
-Owner: TODO
-Inputs:  list[Trigger]
-Outputs: list[QualifiedTrigger]
+Scoring per dimension:
+  P1 → 1.0  |  P2 → 0.6  |  P3 → 0.3  |  unknown → 0.0
 """
 
 from __future__ import annotations
 
-from ..schemas import QualifiedTrigger, Salience, Trigger
+import json
+from pathlib import Path
+from typing import Optional
 
-_SALIENCE_SCORE = {Salience.HIGH: 0.9, Salience.MEDIUM: 0.6, Salience.LOW: 0.3}
+from ..schemas import QualifiedTrigger, Trigger
+
+_MATRIX_PATH = Path(__file__).parents[3] / "targeting_matrix.json"
+
+_LEVEL_SCORE = {"P1": 1.0, "P2": 0.6, "P3": 0.3}
+
+
+def _load_matrix() -> dict:
+    if not _MATRIX_PATH.exists():
+        return {}
+    with open(_MATRIX_PATH, encoding="utf-8") as f:
+        return json.load(f).get("matrix", {})
+
+
+def _dim_score(value: str, dim: dict) -> float:
+    """Return the priority score for *value* within a matrix dimension."""
+    v = value.lower().strip()
+    for level, score in _LEVEL_SCORE.items():
+        for entry in dim.get(level, []):
+            if v == entry["canonical"]:
+                return score
+            if v in [s.lower() for s in entry.get("synonyms", [])]:
+                return score
+    return 0.0
 
 
 def qualify(triggers: list[Trigger], threshold: float = 0.5) -> list[QualifiedTrigger]:
-    """Keep triggers above ``threshold``.
+    """Keep triggers whose 3D matrix score >= threshold."""
+    matrix = _load_matrix()
+    dim_sector = matrix.get("sectoriel", {})
+    dim_geo = matrix.get("geographique", {})
+    dim_func = matrix.get("fonctionnel", {})
 
-    TODO: replace the naive salience mapping with real scoring (recency, account
-    value, fit with our offers, etc.).
-    """
     qualified: list[QualifiedTrigger] = []
     for t in triggers:
-        score = _SALIENCE_SCORE.get(t.salience, 0.5)
+        s_sector = _dim_score(t.sector, dim_sector)
+        s_geo = _dim_score(t.geography, dim_geo)
+        s_func = _dim_score(t.contact_function, dim_func)
+        # Sector P1 (score=1.0) → bypass geo/func filter: core sector is always relevant
+        # Otherwise → worst-case min across all 3 dimensions
+        score = 1.0 if s_sector == 1.0 else min(s_sector, s_geo, s_func)
         if score >= threshold:
-            qualified.append(
-                QualifiedTrigger(
-                    trigger=t,
-                    score=score,
-                    reason=f"{t.salience.value} salience {t.type.value}",
-                )
+            reason = (
+                f"sector={t.sector}({s_sector:.1f}) "
+                f"geo={t.geography}({s_geo:.1f}) "
+                f"func={t.contact_function}({s_func:.1f})"
             )
+            qualified.append(QualifiedTrigger(trigger=t, score=score, reason=reason))
     return qualified

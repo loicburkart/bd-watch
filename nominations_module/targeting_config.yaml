@@ -1,7 +1,7 @@
 # BD Watch — Nominations Module Configuration
 # Option B: broad queries + post-fetch filtering on target roles
 
-lookback_hours: 24
+lookback_hours: 1440  # 60 days — overridable via RSS_LOOKBACK_HOURS env var or --lookback CLI arg
 
 # ------------------------------------------------------------------
 # Google News RSS queries

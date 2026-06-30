@@ -62,6 +62,9 @@ class Trigger:
     source_url: str
     date: str  # ISO yyyy-mm-dd
     company: str
+    sector: str           # "food" | "retail" | … | "unknown"
+    geography: str        # "france" | "noram" | … | "unknown"
+    contact_function: str # "marketing" | "it" | … | "unknown"
     salience: Salience = Salience.MEDIUM
 
 
