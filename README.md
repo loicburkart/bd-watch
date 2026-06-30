@@ -42,6 +42,14 @@ as `dormant`, otherwise `existing_client`. Point it at your export with
 > The real CRM export contains client data and is **not** committed. Keep it local and
 > set `CRM_EXPORT_PATH`, or use the anonymized sample.
 
+### Multiple contacts on one deal
+
+A deal cell may name several people (e.g. `Eric GRESSIER / Caroline SIZARET`). They
+share one deal, so the feeder keeps a **single request** carrying every name in
+`DraftRequest.recipients`. Step 04 then produces **one shared email** that greets all of
+them together, and **one 1-to-1 LinkedIn message per recipient** (LinkedIn is not a
+group channel). `OutreachDraft.linkedin` is therefore a list, validated per recipient.
+
 ## 04 — Drafting Pipeline (LLM Core)
 
 Step 04 (`src/bd_watch/steps/step04_draft.py`) is the core LLM engine of the platform. It takes the output from previous stages (the `DraftRequest`) and generates the final Email and LinkedIn messages. The logic functions as follows:

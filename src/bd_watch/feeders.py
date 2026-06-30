@@ -17,6 +17,7 @@ import csv
 import datetime as _dt
 import logging
 import os
+import re
 from typing import Iterable
 
 from .assets import load_emerton_assets, load_style_reference
@@ -80,9 +81,8 @@ def activation_feeder(path: str | None = None) -> list[DraftRequest]:
     style = load_style_reference()
     requests: list[DraftRequest] = []
     for row in _read_rows(path):
-        req = _row_to_request(row, assets, style)
-        if req is not None:
-            requests.append(req)
+        reqs = _row_to_request(row, assets, style)
+        requests.extend(reqs)
     return requests
 
 
@@ -92,16 +92,16 @@ def activation_feeder(path: str | None = None) -> list[DraftRequest]:
 
 def _row_to_request(
     row: dict[str, str], assets: EmertonAssets, style: StyleReference
-) -> DraftRequest | None:
+) -> list[DraftRequest]:
     company = _get(row, "Company")
-    name = _get(row, "Contact Name")
+    names_raw = _get(row, "Contact Name")
     deal_id = _get(row, "#")
 
-    if not company and not name:
-        return None  # skip blank rows
+    if not company and not names_raw:
+        return []  # skip blank rows
     # Real deals are numbered 1..N. Non-numeric "#" rows are legends/footers, not deals.
     if not deal_id or _to_int(deal_id) is None:
-        return None
+        return []
 
     role = _get(row, "Contact Role")
     scope = _get(row, "Scope of Discussion")
@@ -143,8 +143,13 @@ def _row_to_request(
         company=company,
         salience=salience,
     )
+
+    # A deal cell may list several people (e.g. "Eric GRESSIER / Caroline SIZARET").
+    # They share one deal context, so we keep a single request: the email greets all of
+    # them together, and step 04 produces one 1-to-1 LinkedIn message per recipient.
+    recipients = _split_names(names_raw)
     contact = ContactProfile(
-        full_name=name or "Unknown",
+        full_name=", ".join(recipients) if recipients else "Unknown",
         title=role,
         company=company,
         seniority=_infer_seniority(role),
@@ -153,7 +158,15 @@ def _row_to_request(
         last_interaction=last_date,
         known_priorities=[scope] if scope else [],
     )
-    return DraftRequest(trigger=trigger, contact=contact, assets=assets, style=style)
+    return [
+        DraftRequest(
+            trigger=trigger,
+            contact=contact,
+            assets=assets,
+            style=style,
+            recipients=recipients or [contact.full_name],
+        )
+    ]
 
 
 # --------------------------------------------------------------------------- #
@@ -181,6 +194,18 @@ def _read_rows(path: str) -> Iterable[dict[str, str]]:
         return out
 
     raise ValueError(f"Unsupported CRM export format: {path}")
+
+
+def _split_names(raw: str) -> list[str]:
+    """Split a contact cell into individual people.
+
+    Handles common delimiters ("/", "&", ";", " et ", " and "). A label without a
+    delimiter (e.g. "Digital Lab team") is returned as a single entry.
+    """
+    if not raw:
+        return []
+    parts = re.split(r"\s*(?:/|&|;|\bet\b|\band\b)\s*", raw)
+    return [p.strip() for p in parts if p.strip()]
 
 
 def _get(row: dict[str, str], key: str) -> str:

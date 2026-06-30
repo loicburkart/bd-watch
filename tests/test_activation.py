@@ -7,11 +7,18 @@ through the drafter and review steps.
 The fixture (``tests/fixtures/deal_reminders.xlsx``) is an anonymized copy of the real
 file's structure so the suite is portable. To additionally run against the real export,
 set ``BD_WATCH_REAL_CRM=/path/to/Deal_Reminders_vLightNoEmail.xlsx``.
+
+Note: a deal cell may list several people ("Eric MOREAU / Caroline PETIT"). They share
+one deal, so the feeder keeps a single request carrying all of them as ``recipients``;
+the drafter then produces one shared email + one 1-to-1 LinkedIn message per recipient.
+So 4 deals across 4 companies yield 4 requests.
 """
 
 from __future__ import annotations
 
+import json
 import os
+import types
 from pathlib import Path
 
 import pytest
@@ -36,18 +43,22 @@ def requests() -> list[DraftRequest]:
 
 @pytest.fixture(scope="module")
 def by_company(requests) -> dict[str, DraftRequest]:
+    """One request per deal, so keying by company is unambiguous."""
     return {r.contact.company: r for r in requests}
 
 
 # --------------------------------------------------------------------------- #
-# Row filtering
+# Row filtering & request count
 # --------------------------------------------------------------------------- #
 
-def test_only_real_deals_are_parsed(requests):
-    # 4 deals; the blank row and the "Legend:" footer must be skipped.
+def test_parses_expected_requests(requests):
+    # 4 deals -> 4 requests (the multi-person row stays a single request).
     assert len(requests) == 4
+    assert len({r.contact.company for r in requests}) == 4
+
+
+def test_skips_blank_and_legend_rows(requests):
     companies = {r.contact.company for r in requests}
-    assert "Aquatech Group" in companies
     assert not any("stale" in c.lower() for c in companies)
     assert not any("legend" in c.lower() for c in companies)
 
@@ -55,11 +66,26 @@ def test_only_real_deals_are_parsed(requests):
 def test_every_request_is_well_formed(requests):
     for r in requests:
         assert isinstance(r, DraftRequest)
-        assert r.contact.full_name
-        assert r.contact.company
+        assert r.contact.full_name and r.contact.company
+        assert r.recipients  # at least one recipient
         assert r.trigger.type == TriggerType.DORMANT_RELATIONSHIP
         assert r.contact.language == "fr"
         assert r.assets.sender_name  # assets loaded
+
+
+# --------------------------------------------------------------------------- #
+# Multi-contact handling: one request, several recipients
+# --------------------------------------------------------------------------- #
+
+def test_multi_contact_cell_kept_as_one_request(requests):
+    lacprod = [r for r in requests if r.contact.company == "Lacprod"]
+    assert len(lacprod) == 1
+    assert set(lacprod[0].recipients) == {"Eric MOREAU", "Caroline PETIT"}
+
+
+def test_single_contact_defaults_recipients(by_company):
+    r = by_company["Aquatech Group"]
+    assert r.recipients == ["Camille BERNARD"]
 
 
 # --------------------------------------------------------------------------- #
@@ -67,25 +93,20 @@ def test_every_request_is_well_formed(requests):
 # --------------------------------------------------------------------------- #
 
 @pytest.mark.parametrize(
-    "company,name,seniority,relationship,last_date",
+    "company,seniority,relationship,last_date",
     [
-        ("Aquatech Group", "Camille BERNARD", "Director", Relationship.DORMANT, "2026-06-15"),
-        ("Northstar Capital", "Damien LEROY", "C-level", Relationship.DORMANT, "2026-06-15"),
-        ("Lacprod", "Eric MOREAU / Caroline PETIT", "Manager", Relationship.DORMANT, "2026-06-11"),
-        ("Mutuelle Assur", "Olivier GIRARD", "C-level", Relationship.EXISTING_CLIENT, "2026-06-19"),
+        ("Aquatech Group", "Director", Relationship.DORMANT, "2026-06-15"),
+        ("Northstar Capital", "C-level", Relationship.DORMANT, "2026-06-15"),
+        ("Lacprod", "Manager", Relationship.DORMANT, "2026-06-11"),
+        ("Mutuelle Assur", "C-level", Relationship.EXISTING_CLIENT, "2026-06-19"),
     ],
 )
-def test_field_mapping(by_company, company, name, seniority, relationship, last_date):
+def test_field_mapping(by_company, company, seniority, relationship, last_date):
     r = by_company[company]
-    assert r.contact.full_name == name
     assert r.contact.seniority == seniority
     assert r.contact.relationship == relationship
     assert r.contact.last_interaction == last_date
     assert r.contact.known_priorities  # scope captured as a priority
-
-
-def test_multi_contact_name_preserved(by_company):
-    assert by_company["Lacprod"].contact.full_name == "Eric MOREAU / Caroline PETIT"
 
 
 # --------------------------------------------------------------------------- #
@@ -99,7 +120,6 @@ def test_relationship_classified_by_recency(by_company):
 
 
 def test_salience_high_for_recent_window(requests):
-    # All fixture deals fall in the 7..30 day window.
     assert all(r.trigger.salience == Salience.HIGH for r in requests)
 
 
@@ -114,8 +134,7 @@ def test_trigger_summary_is_grounded(by_company):
 
 
 def test_trigger_carries_real_history(by_company):
-    s = by_company["Lacprod"].trigger.summary.lower()
-    assert "budget" in s  # the actual blocker from the deal history
+    assert "budget" in by_company["Lacprod"].trigger.summary.lower()
 
 
 def test_source_url_references_deal(by_company):
@@ -189,6 +208,12 @@ def test_instruction_includes_crm_context(by_company):
     assert "RFP" in instruction  # grounded history reached the prompt
 
 
+def test_instruction_lists_all_recipients(by_company):
+    instruction = step04_draft._build_instruction(by_company["Lacprod"])
+    assert "Eric MOREAU" in instruction
+    assert "Caroline PETIT" in instruction
+
+
 def test_adaptation_rules_match_relationship(by_company):
     rules = step04_draft._build_adaptation_rules(by_company["Aquatech Group"])
     assert "FR" in rules
@@ -202,6 +227,89 @@ def test_requests_flow_through_drafter_and_review(requests):
         assert isinstance(reviewed, ReviewedOutreach)
         assert reviewed.decision != "auto_send"
         assert reviewed.draft.confidence in {"low", "medium", "high"}
+
+
+# --------------------------------------------------------------------------- #
+# Shared email + per-recipient LinkedIn
+# --------------------------------------------------------------------------- #
+
+def test_mock_email_shared_and_linkedin_per_recipient(by_company):
+    out = step04_draft.draft(by_company["Lacprod"])  # mock path (no API key)
+    # One LinkedIn message per recipient, addressed individually.
+    assert {li.recipient for li in out.linkedin} == {"Eric MOREAU", "Caroline PETIT"}
+    # The shared email greets both contacts together (first names, FR).
+    assert "Bonjour Eric, Caroline," in out.email.body
+
+
+def test_single_recipient_gets_one_linkedin(by_company):
+    out = step04_draft.draft(by_company["Aquatech Group"])
+    assert len(out.linkedin) == 1
+    assert out.linkedin[0].recipient == "Camille BERNARD"
+
+
+# --------------------------------------------------------------------------- #
+# Live drafter: signature is appended by the system, in the contact's language
+# --------------------------------------------------------------------------- #
+
+def _fake_anthropic(payload: dict):
+    """A stand-in anthropic module whose client returns ``payload`` as JSON."""
+
+    class _Messages:
+        def create(self, **_kwargs):
+            text = json.dumps(payload)
+            return types.SimpleNamespace(content=[types.SimpleNamespace(text=text)])
+
+    class _Client:
+        def __init__(self, *_a, **_k):
+            self.messages = _Messages()
+
+    return types.SimpleNamespace(Anthropic=_Client)
+
+
+_PAYLOAD = {
+    "email": {"subject": "Suite à nos échanges", "body": "Bonjour, voici le corps du message.", "cta": "Un point de 15 minutes ?"},
+    "linkedin": [
+        {"recipient": "Eric MOREAU", "message": "Message pour Eric."},
+        {"recipient": "Caroline PETIT", "message": "Message pour Caroline."},
+    ],
+    "rationale": "angle",
+    "confidence": "high",
+    "flags": [],
+}
+
+
+def _force_live(monkeypatch, payload=_PAYLOAD):
+    monkeypatch.setattr(step04_draft, "anthropic", _fake_anthropic(payload))
+    monkeypatch.setattr(
+        step04_draft,
+        "settings",
+        types.SimpleNamespace(has_llm=True, anthropic_api_key="test", model="test-model"),
+    )
+
+
+def test_signature_appended_in_french(monkeypatch, by_company):
+    _force_live(monkeypatch)
+    req = by_company["Aquatech Group"]  # language == "fr"
+    out = step04_draft.draft(req)
+    assert "Bien à vous," in out.email.body
+    assert req.assets.sender_name in out.email.body
+    # The model body must not be discarded.
+    assert "corps du message" in out.email.body
+
+
+def test_signature_appended_in_english(monkeypatch):
+    _force_live(monkeypatch)
+    en_req = feeders.cold_feeder()[0]  # cold sample is in English
+    out = step04_draft.draft(en_req)
+    assert "Best," in out.email.body
+    assert "Bien à vous," not in out.email.body
+
+
+def test_live_linkedin_list_preserved_per_recipient(monkeypatch, by_company):
+    _force_live(monkeypatch)
+    out = step04_draft.draft(by_company["Lacprod"])
+    assert {li.recipient for li in out.linkedin} == {"Eric MOREAU", "Caroline PETIT"}
+    assert {li.message for li in out.linkedin} == {"Message pour Eric.", "Message pour Caroline."}
 
 
 # --------------------------------------------------------------------------- #

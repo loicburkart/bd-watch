@@ -37,7 +37,8 @@ def main() -> None:
         print(f"=== Item {i} | decision: {r.decision} ===")
         print(f"Subject : {d.email.subject}")
         print(f"Email   :\n{d.email.body}\n")
-        print(f"LinkedIn: {d.linkedin_message}")
+        for li in d.linkedin:
+            print(f"LinkedIn → {li.recipient}: {li.message}")
         print(f"Review  : confidence={d.confidence}, flags={d.flags or 'none'}")
         if r.notes:
             print(f"Notes   : {r.notes}")

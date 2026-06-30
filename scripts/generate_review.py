@@ -32,23 +32,27 @@ def _render(req, reviewed) -> str:
     d = reviewed.draft
     c = req.contact
     flags = ", ".join(d.flags) if d.flags else "none"
+    linkedin_blocks = "\n\n".join(
+        f"_To {li.recipient}:_\n\n{li.message}" for li in d.linkedin
+    )
     return f"""\
 ## {c.company} — {c.full_name}
 
 - **Role / seniority:** {c.title} ({c.seniority})
 - **Relationship:** {c.relationship.value} | **Last contact:** {c.last_interaction or 'n/a'} | **Language:** {c.language}
+- **Recipients:** {', '.join(req.recipients)}
 - **Trigger context:** {req.trigger.summary}
 - **Review decision:** `{reviewed.decision}` | **confidence:** {d.confidence} | **flags:** {flags}
 
-**Email — subject:** {d.email.subject}
+**Email (shared) — subject:** {d.email.subject}
 
 {d.email.body}
 
 _CTA: {d.email.cta}_
 
-**LinkedIn:**
+**LinkedIn (1-to-1):**
 
-{d.linkedin_message}
+{linkedin_blocks}
 
 **Rationale (internal):** {d.rationale}
 

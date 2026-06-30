@@ -28,7 +28,7 @@ except ImportError:  # keep the module importable without the SDK installed
     anthropic = None
 
 from ..config import settings
-from ..schemas import DraftRequest, Email, OutreachDraft
+from ..schemas import DraftRequest, Email, LinkedInDraft, OutreachDraft
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +59,8 @@ PRINCIPLES
 4. Brevity. Email: 90-130 words. LinkedIn: 45-75 words.
 5. Credibility through proof, not adjectives. Cite one concrete proof point rather than "recognised leader".
 6. Human tone. Write the way a senior partner writes to a peer: direct, respectful, zero flattery.
+7. LinkedIn vs Email: LinkedIn is a distinct channel. Treat it as a shorter, slightly less formal touchpoint. Do not simply copy-paste the email.
+8. Multiple recipients: the email is ONE shared message greeting all named recipients together. LinkedIn is strictly 1-to-1 — write a separate, distinct message for each recipient (do not reuse the same text).
 
 ADAPTATION GUIDELINES
 {adaptation_rules}
@@ -70,17 +72,19 @@ DO NOT
 - No attachment or link unless genuinely useful.
 - No fabrication: use only the facts provided in the input. If something is missing, do not invent it.
 - No clickbait or all-caps subject line.
+- Do NOT include a closing signature in the email body (do not append "Best, Name - Company" or similar). The system will add it automatically!
 
 OUTPUT
 Respond ONLY with a valid JSON object with this exact shape:
 {{
   "email": {{"subject": "...", "body": "...", "cta": "..."}},
-  "linkedin": {{"message": "..."}},
+  "linkedin": [{{"recipient": "<exact recipient name>", "message": "..."}}],
   "rationale": "...",
   "confidence": "high | medium | low",
   "flags": []
 }}
-No text outside the JSON.
+The "linkedin" array must contain exactly one entry per recipient listed in the input,
+using the recipient's exact name. No text outside the JSON.
 """
 
 INSTRUCTION_TEMPLATE = """\
@@ -95,6 +99,7 @@ Source: {trigger_url} ({trigger_date})
 Relationship: {relationship} | Last interaction: {last_interaction}
 Known priorities: {priorities}
 Writing language: {language}
+Recipients (email greets all together; one LinkedIn message each): {recipients}
 
 # EMERTON ASSETS
 Relevant offer: {offer}
@@ -164,6 +169,7 @@ def _build_instruction(req: DraftRequest) -> str:
         last_interaction=contact.last_interaction or "n/a",
         priorities=", ".join(contact.known_priorities) or "n/a",
         language=contact.language,
+        recipients=", ".join(req.recipients) or contact.full_name,
         offer=req.assets.relevant_offer,
         proof_points=" | ".join(req.assets.proof_points),
         sender_name=req.assets.sender_name,
@@ -171,6 +177,40 @@ def _build_instruction(req: DraftRequest) -> str:
         tone=req.style.tone,
         past_messages="\n".join(f"- {m}" for m in req.style.past_messages) or "- (none)",
     )
+
+
+def _first_name(full_name: str) -> str:
+    parts = full_name.strip().split()
+    return parts[0] if parts else full_name.strip()
+
+
+def _greeting(recipients: list[str], language: str) -> str:
+    """Shared email greeting addressing all recipients by first name."""
+    names = ", ".join(_first_name(r) for r in recipients if r.strip())
+    if language.lower() == "fr":
+        return f"Bonjour {names}," if names else "Bonjour,"
+    return f"Hi {names}," if names else "Hi,"
+
+
+def _parse_linkedin(raw: object, recipients: list[str]) -> list[LinkedInDraft]:
+    """Normalise the model's ``linkedin`` field into one draft per recipient.
+
+    Tolerates a list of objects, a single object, or a bare string.
+    """
+    items: list[dict] = []
+    if isinstance(raw, list):
+        items = [x for x in raw if isinstance(x, dict)]
+    elif isinstance(raw, dict):
+        items = [raw]
+    elif isinstance(raw, str):
+        items = [{"recipient": recipients[0] if recipients else "", "message": raw}]
+
+    drafts = [
+        LinkedInDraft(recipient=str(i.get("recipient", "")).strip(), message=str(i.get("message", "")).strip())
+        for i in items
+        if i.get("message")
+    ]
+    return drafts or [LinkedInDraft(recipient=r, message="") for r in recipients]
 
 
 def _parse_llm_json(text: str) -> dict:
@@ -196,9 +236,12 @@ def _validate(draft: OutreachDraft) -> OutreachDraft:
     if not EMAIL_WORDS[0] <= email_words <= EMAIL_WORDS[1]:
         flags.append(f"email_length:{email_words}w")
 
-    li_words = _word_count(draft.linkedin_message)
-    if not LINKEDIN_WORDS[0] <= li_words <= LINKEDIN_WORDS[1]:
-        flags.append(f"linkedin_length:{li_words}w")
+    if not draft.linkedin:
+        flags.append("missing_linkedin")
+    for li in draft.linkedin:
+        li_words = _word_count(li.message)
+        if not LINKEDIN_WORDS[0] <= li_words <= LINKEDIN_WORDS[1]:
+            flags.append(f"linkedin_length[{li.recipient}]:{li_words}w")
 
     if len(draft.email.subject) > SUBJECT_MAX_CHARS:
         flags.append("subject_too_long")
@@ -240,13 +283,17 @@ def draft(req: DraftRequest) -> OutreachDraft:
         )
         out = _parse_llm_json(resp.content[0].text)
         email = out.get("email", {})
+        email_body = email.get("body", "")
+        signoff = "Bien à vous," if req.contact.language.lower() == "fr" else "Best,"
+        assembled_body = f"{email_body}\n\n{signoff}\n{req.assets.sender_name} — {req.assets.sender_title}"
+
         generated = OutreachDraft(
             email=Email(
                 subject=email.get("subject", ""),
-                body=email.get("body", ""),
+                body=assembled_body,
                 cta=email.get("cta", ""),
             ),
-            linkedin_message=out.get("linkedin", {}).get("message", ""),
+            linkedin=_parse_linkedin(out.get("linkedin"), req.recipients),
             rationale=out.get("rationale", ""),
             confidence=out.get("confidence", "low"),
             flags=list(out.get("flags", [])),
@@ -260,25 +307,37 @@ def draft(req: DraftRequest) -> OutreachDraft:
 def _mock_draft(req: DraftRequest) -> OutreachDraft:
     """Deterministic fallback when the API is unavailable or errors out.
 
+    One shared email greeting all recipients + one LinkedIn message per recipient.
     Always low confidence and flagged: a mock must never be eligible for auto-send.
     """
-    name = req.contact.full_name.split()[0]
+    lang = req.contact.language.lower()
+    company = req.contact.company
+    greeting = _greeting(req.recipients, lang)
+
+    if lang == "fr":
+        body = (
+            f"{greeting}\n\nPour faire suite à nos échanges concernant {company} — un point "
+            f"rapide pourrait nous aider à débloquer la suite.\n\nBien à vous,\n"
+            f"{req.assets.sender_name} — {req.assets.sender_title}"
+        )
+        cta = "Un point de 15 minutes ?"
+        li = "Bonjour {first}, pour faire suite à nos échanges chez {company} — au plaisir d'en reparler si le moment est opportun."
+    else:
+        body = (
+            f"{greeting}\n\nFollowing up on our conversations about {company} — a short "
+            f"call could help us unblock the next step.\n\nBest,\n"
+            f"{req.assets.sender_name} — {req.assets.sender_title}"
+        )
+        cta = "A 15-minute call?"
+        li = "Hi {first}, following up on our conversations at {company} — happy to pick this back up if the timing works."
+
+    linkedin = [
+        LinkedInDraft(recipient=name, message=li.format(first=_first_name(name), company=company))
+        for name in req.recipients
+    ]
     return OutreachDraft(
-        email=Email(
-            subject="Congrats — plus a field note",
-            body=(
-                f"Hi {name},\n\nCongratulations on the news at {req.contact.company}. "
-                f"The first few months often set the trajectory.\n\nWe recently helped a "
-                f"similar player rework their approach — the kind of quick win that earns "
-                f"credibility internally.\n\nWould you be open to a 15-minute "
-                f"conversation?\n\nBest,\n{req.assets.sender_name} — {req.assets.sender_title}"
-            ),
-            cta="15-minute conversation about priorities.",
-        ),
-        linkedin_message=(
-            f"Hi {name}, congratulations on the role at {req.contact.company}. "
-            f"Happy to compare notes if it's a relevant moment."
-        ),
+        email=Email(subject="Suite à nos échanges", body=body, cta=cta),
+        linkedin=linkedin,
         rationale="Mock output (API skipped or failed).",
         confidence="low",
         flags=["mock_output"],
