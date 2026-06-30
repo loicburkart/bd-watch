@@ -48,20 +48,22 @@ flowchart LR
   *who and what is worth watching*; the **News watch** (skill 01 — Google News RSS + Actu News API → a
   **News Aggregator**) surfaces the reason to reach out; **PEOPLE ID** (skill 03 — Lusha + web) resolves
   the right person; the **Drafter** (skill 04) writes the message. → feeds the drafter's **new-prospects** input.
-- **CRM path (existing relationships).** **CRM (HubSpot) → CRM Processor** produces two streams that go
-  **straight to the Drafter** as *"Reminders, Post-mortems"* — i.e. the drafter's **known-clients** input
-  (deal reminders / activation) and its **lost-deals** input (post-mortem re-engagement). The CRM Processor
-  also feeds account context back into the watch.
+- **CRM path (existing relationships).** **CRM (HubSpot) → CRM Processor** is realized by three packaged
+  **CRM routines** that pull live HubSpot data and produce the spreadsheets the rest of the pipeline
+  consumes: `crm-reminders-routine` → deal reminders (drafter's **known-clients** input),
+  `crm-post-mortem-routine` → `Lost_Deals_PostMortem.xlsx` (drafter's **lost-deals** input), and
+  `crm-prospects-for-news-screening` → a never-won prospect list cross-referenced with news, feeding the
+  discovery path.
 - **Review** (skill 05) is the internal send-gate after the Drafter — a guardrail, not a functional block,
   so it isn't drawn above.
 
-> **Packaging status.** Three skills are packaged as installable Claude Skills: the **signal watch**
-> (`emerton-signal-watch/`, covering Watch + Qualify), the **message drafter** (`emerton-message-drafter/`),
-> and the **orchestrator** (`emerton-bd-orchestrator/`, which runs the whole pipeline end to end). The
-> remaining stages (Contact, CRM ingestion, Review) are merged on `main` as Python modules but not yet
-> wrapped as standalone `.skill`s. One known gap on the discovery path: the **step03 contact hook still
-> returns a mock profile** (the real `identify_contact` module isn't wired into the pipeline yet). This
-> index documents all of them so the team has one place to see what exists, where it lives, and its state.
+> **Packaging status.** Six skills are now packaged as installable Claude Skills:
+> the **orchestrator** (`emerton-bd-orchestrator`), the **signal watch** (`emerton-signal-watch`, Watch +
+> Qualify), the **message drafter** (`emerton-message-drafter`), and three **CRM ingestion routines** that
+> pull live data from HubSpot — `crm-reminders-routine`, `crm-post-mortem-routine`, and
+> `crm-prospects-for-news-screening`. The remaining stage, **Contact identification (03)**, is merged on
+> `main` as a Python module but its pipeline hook still returns a mock profile (wiring pending), and Review
+> is a base step. This index documents all of them so the team has one place to see what exists and its state.
 
 ## The skills at a glance
 
@@ -71,7 +73,9 @@ flowchart LR
 | 01 | **Watch / Triggers** | Google News (RSS) + Actu News (API) → News Aggregator | Scans news sources (nominations, appointments, funding) for reasons to reach out and aggregates them into raw signals/triggers. | Benjamin | `triggers_module/`, `src/bd_watch/scrapers/`, `steps/step01_watch.py` — **packaged with Qualify in `emerton-signal-watch/`** | ✅ Packaged (`emerton-signal-watch`); RSS live |
 | 02 | **Qualify / Targeting matrix** ⭐ | Prospection Priority Matrix | Scopes & prioritises *what is worth watching* and scores triggers on the 3-axis matrix (sector × geography × function → P1–P3, worst-axis rule + P1-sector bypass). | Benjamin | `steps/step02_qualify.py` + `targeting_matrix.json` — **packaged in `emerton-signal-watch/`** | ✅ Packaged & matrix scoring live |
 | 03 | **Contact identification** | PEOPLE ID (Lusha, Web) | From a signal, deduces the target profile, finds candidates via **Lusha + web scraping**, ranks them with an LLM, enriches the top 3; checks CRM first for existing relationships. | team | `src/bd_watch/identify_contact/` (module) + `steps/step03_contact.py` (hook) | Module merged; **pipeline hook still returns a mock** — wiring pending |
-| — | **CRM ingestion** | CRM (HubSpot) → CRM Processor | Reads the CRM and produces the *Reminders* and *Post-mortems* streams that feed the drafter directly (and account context back to the watch). | team | `src/bd_watch/feeders.py` (activation feeder) | Working |
+| C1 | **CRM reminders routine** | CRM (HubSpot) → CRM Processor | Pulls stale early-stage HubSpot deals (no update in ~1 week), scores them on a 4-tier rubric, writes a prioritised deal-reminders `.xlsx` → the drafter's **known-clients** input. | Ugo | **`crm-reminders-routine.skill`** | ✅ Packaged |
+| C2 | **CRM post-mortem routine** | CRM (HubSpot) → CRM Processor | Pulls **lost** deals from HubSpot and writes `Lost_Deals_PostMortem_[date].xlsx` → the drafter's **lost-deals** input. | Ugo | **`crm-post-mortem-routine.skill`** | ✅ Packaged |
+| C3 | **CRM prospects → news screening** | CRM (HubSpot) → CRM Processor → News watch | Maintains `Never_Won_Prospects.xlsx` (prospected-but-never-won companies) and cross-references it with news signals to spot re-engagement windows → feeds the **discovery** path. | Ugo | **`crm-prospects-for-news-screening.skill`** | ✅ Packaged |
 | 04 | **Message drafter** ⭐ | DRAFTER | Turns an Excel of contacts into review-ready outreach — one email + one 1-to-1 LinkedIn per contact, email-ready, grounded strictly in the row. | Loïc | **`emerton-message-drafter/`** (packaged `.skill`) | ✅ Packaged & merged to `main` |
 | 05 | **Review** | (internal gate, not shown) | Guardrail: auto-send only if confidence is high and no flags; otherwise route to human review or discard. | team | `steps/step05_review.py` | Merged; minimal rule in place |
 
@@ -119,6 +123,23 @@ CRM check first so an existing/dormant relationship is reactivated rather than t
 a `ContactProfile` for the drafter. **Note:** the pipeline hook `steps/step03_contact.py` still returns a
 placeholder profile — wiring it to this module is the main remaining gap on the discovery path.
 
+## C1–C3 — CRM ingestion routines  ·  packaged Claude Skills (HubSpot)
+
+The **CRM Processor** is realized by three packaged routines (owner: Ugo) that read live HubSpot data and
+write the spreadsheets the rest of the pipeline consumes. They run as standalone Cowork skills (and pair
+naturally with scheduled tasks for a weekly cadence):
+
+- **`crm-reminders-routine`** — pulls stale early-stage deals (no update in ~1 week), scores them on a
+  4-tier priority rubric, and writes a prioritised deal-reminders `.xlsx`. → drafter's **known-clients** input.
+- **`crm-post-mortem-routine`** — pulls **lost** deals and writes `Lost_Deals_PostMortem_[date].xlsx`.
+  → drafter's **lost-deals** input.
+- **`crm-prospects-for-news-screening`** — maintains `Never_Won_Prospects.xlsx` (companies prospected but
+  never won) and cross-references them with news signals to spot re-engagement windows. → feeds the
+  **discovery** path / news watch.
+
+Install each like any skill: **Customize → Skills → "+"** and upload the `.skill`. The orchestrator can
+trigger the relevant routine at the start of a run, then hand the resulting spreadsheet to the drafter.
+
 ## 04 — Message drafter ⭐  ·  packaged Claude Skill
 
 Writes the message. This is the one packaged, installable Claude Skill. It takes a contact (plus the
@@ -143,10 +164,10 @@ the drafter always returns a review document.
 
 ## For the team — consolidating onto `main`
 
-- The signal watch (Watch + Qualify), the message drafter, and the orchestrator are on `main` and packaged
-  as installable skills. The Contact module is merged on `main` too, but its pipeline hook
-  (`steps/step03_contact.py`) still returns a placeholder — wiring it to `identify_contact` is the main
-  remaining gap. Review lives on `main` as a base pipeline step.
+- Six skills are packaged on `main`: the orchestrator, the signal watch (Watch + Qualify), the message
+  drafter, and the three CRM routines (reminders, post-mortem, prospects-for-news-screening). The **Contact
+  module** is merged too, but its pipeline hook (`steps/step03_contact.py`) still returns a placeholder —
+  wiring it to `identify_contact` is the main remaining gap. Review lives on `main` as a base pipeline step.
 - Keep the **shared contracts** in `src/bd_watch/schemas.py` stable — they are what let these skills stay
   independent and plug together.
 - As each stage matures, it can follow the drafter's pattern and be packaged as its own installable

@@ -19,9 +19,10 @@ CRM (HubSpot) → CRM Processor ──(reminders, post-mortems)┘
 - Runs each **available** stage in order through the shared `schemas.py` contracts, delegates **drafting**
   to `emerton-message-drafter`, applies the **Review** send-gate, and **consolidates** everything into one
   review document with a run report.
-- **Degrades gracefully**: all stages exist as code on `main` (only Draft is packaged as a skill). The
-  real gaps are the **mocked contact hook** (step03 not yet wired to the `identify_contact` module) and
-  **heuristic qualify scoring**. The orchestrator flags those (`contact_unverified`, `heuristic`), accepts
+- **Composes the packaged skills**: `emerton-signal-watch` (Watch + Qualify, matrix scoring live), the
+  `crm-*` routines (generate the HubSpot spreadsheets), and `emerton-message-drafter` (drafting).
+- **Degrades gracefully**: the one real gap is the **mocked contact hook** (step03 not yet wired to the
+  merged `identify_contact` module). The orchestrator flags it `contact_unverified`, accepts
   manually-provided triggers/contacts, and **never fabricates** to fill a gap.
 
 ## Install
@@ -57,12 +58,12 @@ emerton-bd-orchestrator/
 
 ## Status & dependencies
 
-- **CRM path: fully working now** (Excel → Draft → Review).
-- **Discovery path: runs end-to-end on `main`** (`python -m bd_watch.pipeline`), with two gaps the run
-  report flags: **contact resolution is mocked** (step03's hook isn't wired to the merged
-  `src/bd_watch/identify_contact/` module yet → `contact_unverified`), and **qualify scoring is heuristic**
-  (matrix present, full scoring pending). When step03 is wired and scoring finished, **no orchestrator
-  change is needed** — it already calls each stage through the shared schemas.
+- **CRM path: fully working now** — the `crm-reminders-routine` / `crm-post-mortem-routine` skills
+  generate the spreadsheet from HubSpot (or the user supplies it), then Draft → Review.
+- **Discovery path: runs end-to-end on `main`** via `emerton-signal-watch` (Watch + Qualify, matrix scoring
+  live). One gap the run report flags: **contact resolution is mocked** (step03's hook isn't wired to the
+  merged `src/bd_watch/identify_contact/` module yet → `contact_unverified`). When step03 is wired, **no
+  orchestrator change is needed** — it already calls each stage through the shared schemas.
 - Delegates drafting to **`emerton-message-drafter`**; do not duplicate its rules here.
 
 See the suite index — [`../README.md`](../README.md) — for all skills and the functional architecture.

@@ -27,22 +27,30 @@ score triggers), call that stage's skill directly — e.g. `emerton-message-draf
 
 ## Two entry paths (pick based on the request/input)
 
-1. **CRM path** — the user supplies an Excel (CRM deal export / lost-deal post-mortem / prospect list),
-   or asks to "re-engage known clients / lost deals". This path is **fully working today**: it goes
-   straight to **Draft (04)** → **Review (05)**. No watch/contact needed (the contacts are in the file).
-2. **Discovery path** — the user asks to find *new* reasons to reach out ("scan the news", "who got
-   appointed / raised funding this week"). This runs **Watch (01) → Qualify (02) → Contact ID (03) →
-   Draft (04) → Review (05)**. Some upstream stages are not yet merged to `main` (see availability) —
-   degrade gracefully (below).
+1. **CRM path** — re-engage known clients / lost deals. The source spreadsheet is either supplied by the
+   user or **generated on demand from HubSpot** by a CRM routine:
+   - `crm-reminders-routine` → prioritised stale-deal `.xlsx` (drafter's **known-clients** input).
+   - `crm-post-mortem-routine` → `Lost_Deals_PostMortem_[date].xlsx` (drafter's **lost-deals** input).
+   Then go straight to **Draft (04)** → **Review (05)** (the contacts are in the file; no watch/contact needed).
+   **Fully working today.**
+2. **Discovery path** — find *new* reasons to reach out ("scan the news", "who got appointed / raised
+   funding"). Runs **Watch (01) → Qualify (02) → Contact ID (03) → Draft (04) → Review (05)** via
+   `emerton-signal-watch` (Watch + Qualify). `crm-prospects-for-news-screening` can supply a never-won
+   prospect list to cross-reference against the news. The one gap: **Contact ID's pipeline hook is mocked**
+   (see *Graceful degradation*).
 
 ## Orchestration procedure
 
 1. **Confirm scope once** (use the orchestrator's judgment; ask only if ambiguous):
    - Which path (CRM export vs. news discovery)? What region/sector/timeframe? And the **sender**
      (name + title — always required for drafting, no default).
-2. **Run the helper to plan the run:** `python scripts/run_pipeline.py --input <file.xlsx>` (CRM path) or
-   `python scripts/run_pipeline.py --discovery` (discovery path). It detects which stages are available,
-   parses any Excel via the drafter's parser, and writes a **run manifest** (JSON) + prints a plan.
+2. **Get the source data, then plan the run.**
+   - *CRM path:* if the user didn't attach a spreadsheet, run the matching CRM routine first to generate it
+     from HubSpot — `crm-reminders-routine` (known clients) or `crm-post-mortem-routine` (lost deals).
+   - *Discovery path:* run `emerton-signal-watch` to get the qualified watchlist; optionally seed it from
+     `crm-prospects-for-news-screening`.
+   Then plan with `python scripts/run_pipeline.py --input <file.xlsx>` (CRM) or `--discovery`. The helper
+   detects available stages, parses any Excel via the drafter's parser, and writes a **run manifest** (JSON).
 3. **Execute each available stage in order**, passing typed output to the next (contracts in
    `references/pipeline.md`). For a missing stage, follow *Graceful degradation*.
 4. **Draft** — hand each resolved contact + its grounded context to the **`emerton-message-drafter`**
@@ -61,16 +69,15 @@ All five stages now exist as **code on `main`**; only **Draft (04)** is packaged
 real gaps are *wiring/maturity*, not missing stages. Do the best honest thing and report it:
 
 - **CRM path:** fully supported now — skip Watch/Qualify/Contact and go straight to Draft → Review.
-- **Discovery path:** runs end-to-end (`python -m bd_watch.pipeline`), but:
+- **Discovery path:** Watch + Qualify run via `emerton-signal-watch` (matrix scoring live). One gap:
   - **Contact ID (03) hook is mocked.** `step03_contact.identify_contact()` returns a placeholder; the real
     `src/bd_watch/identify_contact/` module (Lusha + web + LLM) isn't wired in yet. Flag every such contact
     `contact_unverified` and ask the user to confirm the person before anything is sent.
-  - **Qualify (02) is heuristic** (salience, not the full targeting matrix). Label scoring `heuristic`.
 - **If a stage genuinely returns nothing** (e.g. no triggers found), say so; ask the user to provide
   triggers/contacts rather than inventing them.
 - **Never invent** a trigger, a contact, or a fact to fill a gap. Mark it `pending`/`unverified` and move on.
 
-Always state in the run report which stages actually ran, which were heuristic/mocked, and what is unverified.
+Always state in the run report which stages actually ran, which were mocked, and what is unverified.
 
 ## Output
 

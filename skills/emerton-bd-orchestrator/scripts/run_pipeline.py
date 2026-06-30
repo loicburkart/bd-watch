@@ -153,7 +153,6 @@ def main() -> None:
             manifest["notes"].append("discovery stages present — run: python -m bd_watch.pipeline")
             if not contact_wired:
                 manifest["notes"].append("WARNING: step03_contact hook returns a MOCK profile (identify_contact module not wired) — mark contacts contact_unverified")
-            manifest["notes"].append("qualify scoring is heuristic (matrix not fully wired)")
             print("\ndiscovery stages present. Run the code pipeline: python -m bd_watch.pipeline")
             if not contact_wired:
                 print("!! step03 contact resolution is MOCKED — flag contacts as contact_unverified.")
