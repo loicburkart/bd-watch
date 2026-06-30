@@ -59,7 +59,7 @@ In a Claude / Cowork chat, attach a contacts Excel (a `Deal_Reminders`-style CRM
 new-prospects list) and say something like *"Draft outreach from this file."*
 
 Claude will, **once**, ask you for:
-1. **Sender** — name + title to sign as (e.g. "Ugo Martin, Partner, Emerton Data"). Required for the signature.
+1. **Sender** — name + title to sign as (format: "<First Last>, <Title>, Emerton Data"). **Always required at launch — no default, never carried over or invented.** The signature uses exactly the sender you give; until then it stays the literal placeholder `[Sender Name] — [Sender Title]`.
 2. **Default language** — FR or EN, used when a row doesn't specify.
 3. **Output location** — where to save the review document.
 

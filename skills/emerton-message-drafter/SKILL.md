@@ -20,11 +20,11 @@ The user provides an Excel of contacts and wants outreach written. Three input s
 
 ## Before drafting — ask the user once
 
-1. **Sender** — name and title to sign as (e.g. "Ugo Martin, Partner, Emerton Data"). Required for the signature.
+1. **Sender** — the name and title to sign as (format: "<First Last>, <Title>, Emerton Data"). **Always ask for this at launch — there is no default sender.** Never hardcode, assume, or carry over a sender from a previous run, and never invent a name. The signature uses exactly the sender the user gives this run.
 2. **Default language** — FR or EN, used when a row doesn't specify. (French accounts → FR; contacts clearly outside France → EN.)
 3. **Output location** — where to save the review document.
 
-Do not proceed with a placeholder sender or guess the language for a clearly-international contact.
+Do not proceed without a sender supplied this run, and do not guess the language for a clearly-international contact. Until the sender is provided, leave the signature as the literal placeholder `[Sender Name] — [Sender Title]`.
 
 ## Workflow
 
