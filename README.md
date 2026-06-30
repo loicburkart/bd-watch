@@ -21,6 +21,19 @@ step through the shared schemas in `src/bd_watch/schemas.py`.
 
 `pipeline.py` wires the steps together end to end.
 
+## 04 — Drafting Pipeline (LLM Core)
+
+Step 04 (`src/bd_watch/steps/step04_draft.py`) is the core LLM engine of the platform. It takes the output from previous stages (the `DraftRequest`) and generates the final Email and LinkedIn messages. The logic functions as follows:
+
+1. **Context-Aware Decision Tree**:
+   Before querying the LLM, the python pipeline evaluates the context of the contact using a helper decision-tree function. It checks the contact's `seniority` (e.g., C-Level vs VP), the `relationship` (e.g., Cold vs Warm vs Dormant), and the target `language`.
+2. **Dynamic Prompt Assembly**:
+   Based on the decision tree, exact adaptation rules are injected into the overarching `SYSTEM_PROMPT`. For instance, if the contact is C-Level, the prompt is instructed to be highly concise and strategic. If the relationship is Cold, the model is told to build quick legitimacy and provide immediate value based on the trigger.
+3. **Execution**:
+   Using the `anthropic` client (and the `ANTHROPIC_API_KEY` from your environment), it constructs the final instruction containing the trigger details, Emerton assets, style reference, and the modified rules. It then expects a strictly structured JSON response containing the message bodies and subject lines.
+4. **Mock Fallback**:
+   If the `ANTHROPIC_API_KEY` is not present, Step 04 gracefully degrades into a mocked draft mode, returning a hardcoded output. This guarantees that local developers missing an API key can still successfully run the pipeline demo end-to-end.
+
 ## Quickstart
 
 ```bash

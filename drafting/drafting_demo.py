@@ -128,8 +128,8 @@ def build_instruction(case: dict) -> str:
 # 2. SAMPLE INPUTS (mocked — would come from steps 1 & 3 + credentials base)
 # --------------------------------------------------------------------------- #
 
-SENDER = {"name": "Loïc Burkart", "title": "Partner, Emerton Data",
-          "email": "loic.burkart@emerton-data.com"}
+SENDER = {"name": "[Sender Name]", "title": "[Sender Title], Emerton Data",
+          "email": "sender@emerton-data.com"}
 
 DEFAULT_STYLE = {
     "tone": "professional, direct, warm, no salesy jargon",
@@ -253,7 +253,7 @@ MOCK_OUTPUTS = [
                      "the relevant scope. The kind of quick win that earns a data "
                      "roadmap credibility internally.\n\nWould you be open to a "
                      "15-minute conversation about your priorities for the first 100 "
-                     "days?\n\nBest,\nLoïc Burkart — Partner, Emerton Data"),
+                     "days?\n\nBest,\n[Sender Name] — [Sender Title], Emerton Data"),
             "cta": "15-minute conversation about first-100-days priorities.",
         },
         "linkedin": {
@@ -277,7 +277,7 @@ MOCK_OUTPUTS = [
                      "data-product time-to-market by 40% as they scaled, mostly by "
                      "fixing the operating model rather than the tech.\n\nWould a "
                      "20-minute exchange on what tends to break at this stage be "
-                     "useful?\n\nBest,\nLoïc Burkart — Partner, Emerton Data"),
+                     "useful?\n\nBest,\n[Sender Name] — [Sender Title], Emerton Data"),
             "cta": "20-minute exchange on scaling pitfalls.",
         },
         "linkedin": {
@@ -302,7 +302,7 @@ MOCK_OUTPUTS = [
                      "échangé. Nous avons depuis déployé un cadre de gouvernance IA "
                      "pour un acteur bancaire européen en amont de l'AI Act — sujet "
                      "proche du vôtre.\n\nUn échange de 15 minutes vous "
-                     "intéresserait-il ?\n\nBien à vous,\nLoïc Burkart — Partner, "
+                     "intéresserait-il ?\n\nBien à vous,\n[Sender Name] — [Sender Title], "
                      "Emerton Data"),
             "cta": "Échange de 15 minutes sur la gouvernance IA.",
         },

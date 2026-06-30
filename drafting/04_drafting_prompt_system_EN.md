@@ -37,9 +37,9 @@ The module receives a single JSON object. Upstream steps populate it; for the st
       "Data practice of 40+ specialised consultants."
     ],
     "sender": {
-      "name": "Loïc Burkart",
-      "title": "Partner, Emerton Data",
-      "email": "loic.burkart@emerton-data.com"
+      "name": "[Sender Name]",
+      "title": "[Sender Title], Emerton Data",
+      "email": "sender@emerton-data.com"
     },
     "credentials_url": "https://..."
   },
@@ -154,7 +154,7 @@ Produce the JSON.
 {
   "email": {
     "subject": "Congrats — plus a data/retail field note",
-    "body": "Hi Marie,\n\nCongratulations on your appointment as CDO of Acme Retail. The first few months often set the data trajectory for the years that follow.\n\nWe recently helped a European retailer rework its supply-chain pricing — a 12% margin gain on the relevant scope. The kind of quick win that earns a data roadmap credibility internally.\n\nWould you be open to a 15-minute conversation about your priorities for the first 100 days?\n\nBest,\nLoïc Burkart — Partner, Emerton Data",
+    "body": "Hi Marie,\n\nCongratulations on your appointment as CDO of Acme Retail. The first few months often set the data trajectory for the years that follow.\n\nWe recently helped a European retailer rework its supply-chain pricing — a 12% margin gain on the relevant scope. The kind of quick win that earns a data roadmap credibility internally.\n\nWould you be open to a 15-minute conversation about your priorities for the first 100 days?\n\nBest,\n[Sender Name] — [Sender Title], Emerton Data",
     "cta": "15-minute conversation about first-100-days priorities."
   },
   "linkedin": {
