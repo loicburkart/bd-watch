@@ -93,6 +93,7 @@ def main():
     result = identify_contact(signal=signal, our_angle=our_angle, lusha=lusha)
 
     contacts = []
+    recommended_id = result.recommended_contact.lusha_id if result.recommended_contact else None
     for c in ([result.recommended_contact] if result.recommended_contact else []) + result.alternatives:
         contacts.append({
             "name": c.name,
@@ -101,7 +102,7 @@ def main():
             "email": c.email or None,
             "linkedin": c.linkedin_url or None,
             "context": signal.context.summary,
-            "rationale": result.rationale,
+            "rationale": result.rationale if c.lusha_id == recommended_id else "Contact alternatif identifié par Lusha.",
         })
 
     out_path = Path(__file__).parent.parent / f"result_{args.signal}.json"
