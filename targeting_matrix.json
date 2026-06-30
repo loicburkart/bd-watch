@@ -1,0 +1,196 @@
+{
+  "version": "0.1",
+  "description": "3D Targeting Matrix — manual config for PoC. Edit the P1/P2/P3 lists to adjust priorities.",
+  "scoring_rule": "The overall score is the minimum across all 3 dimensions (worst-case). A signal must be P1 on all 3 axes to trigger an outreach.",
+
+  "matrix": {
+
+    "sectoriel": {
+      "P1": [
+        {
+          "canonical": "food",
+          "synonyms": [
+            "food", "agroalimentaire", "agro-alimentaire", "alimentation",
+            "food & beverage", "food and beverage", "f&b", "boissons",
+            "grande consommation", "fmcg", "cpg", "consumer goods",
+            "produits alimentaires", "industrie alimentaire"
+          ]
+        }
+      ],
+      "P2": [
+        {
+          "canonical": "retail",
+          "synonyms": ["retail", "distribution", "grande distribution", "gms", "e-commerce"]
+        },
+        {
+          "canonical": "luxe",
+          "synonyms": ["luxe", "luxury", "beauté", "beauty", "cosmétiques", "cosmetics", "mode", "fashion"]
+        },
+        {
+          "canonical": "sante",
+          "synonyms": ["santé", "health", "healthcare", "pharma", "pharmaceutique", "medtech", "medica"]
+        }
+      ],
+      "P3": [
+        {
+          "canonical": "assurance",
+          "synonyms": ["assurance", "insurance", "mutuelle", "réassurance", "reinsurance"]
+        },
+        {
+          "canonical": "industrie",
+          "synonyms": ["industrie", "industry", "manufacturing", "production industrielle", "automobile", "automotive"]
+        },
+        {
+          "canonical": "tmt",
+          "synonyms": ["tmt", "télécoms", "telecom", "media", "médias", "tech", "technology", "technologie"]
+        },
+        {
+          "canonical": "energie",
+          "synonyms": ["énergie", "energy", "utilities", "eau", "water", "déchets", "waste", "environnement"]
+        },
+        {
+          "canonical": "finance",
+          "synonyms": ["finance", "banque", "banking", "services financiers", "financial services", "fonds", "private equity"]
+        },
+        {
+          "canonical": "defense",
+          "synonyms": ["défense", "defense", "aérospatial", "aerospace", "naval"]
+        }
+      ]
+    },
+
+    "geographique": {
+      "P1": [
+        {
+          "canonical": "france",
+          "synonyms": ["france", "français", "french", "paris", "île-de-france", "hexagone", "fr"]
+        },
+        {
+          "canonical": "noram",
+          "synonyms": [
+            "noram", "north america", "amérique du nord", "usa", "états-unis", "united states",
+            "us", "canada", "canadien", "canadian", "québec", "new york", "san francisco"
+          ]
+        },
+        {
+          "canonical": "north_east_asia",
+          "synonyms": [
+            "north east asia", "northeast asia", "asie du nord-est", "chine", "china",
+            "hong kong", "hk", "japon", "japan", "corée", "korea", "taiwan",
+            "singapour", "singapore"
+          ]
+        }
+      ],
+      "P2": [
+        {
+          "canonical": "afrique",
+          "synonyms": ["afrique", "africa", "afrique du nord", "north africa", "maroc", "morocco", "algérie", "côte d'ivoire"]
+        },
+        {
+          "canonical": "eu_ouest",
+          "synonyms": [
+            "europe de l'ouest", "western europe", "royaume-uni", "uk", "united kingdom",
+            "allemagne", "germany", "espagne", "spain", "italie", "italy",
+            "benelux", "pays-bas", "netherlands", "suisse", "switzerland"
+          ]
+        }
+      ],
+      "P3": [
+        {
+          "canonical": "reste_du_monde",
+          "synonyms": [
+            "reste du monde", "rest of world", "row", "amérique latine", "latin america",
+            "moyen-orient", "middle east", "inde", "india", "southeast asia", "asie du sud-est",
+            "australie", "australia", "russie", "russia"
+          ]
+        }
+      ]
+    },
+
+    "fonctionnel": {
+      "P1": [
+        {
+          "canonical": "marketing",
+          "synonyms": [
+            "marketing", "cmo", "chief marketing officer", "directeur marketing",
+            "brand", "marque", "trade marketing", "consumer insights", "category management",
+            "pricing", "revenue management", "rgm"
+          ]
+        },
+        {
+          "canonical": "rd",
+          "synonyms": [
+            "r&d", "research & development", "recherche et développement", "innovation",
+            "chief scientific officer", "cso", "directeur r&d", "directeur innovation",
+            "product development", "développement produit"
+          ]
+        },
+        {
+          "canonical": "it",
+          "synonyms": [
+            "it", "dsi", "cio", "chief information officer", "cto", "chief technology officer",
+            "directeur informatique", "digital", "data", "systèmes d'information", "si",
+            "transformation digitale", "digital transformation", "tech"
+          ]
+        },
+        {
+          "canonical": "rh",
+          "synonyms": [
+            "rh", "hr", "ressources humaines", "human resources", "chro",
+            "chief human resources officer", "drh", "directeur rh", "people",
+            "talent", "talent acquisition", "formation", "learning"
+          ]
+        },
+        {
+          "canonical": "finance",
+          "synonyms": [
+            "finance", "cfo", "chief financial officer", "daf", "directeur financier",
+            "contrôle de gestion", "controlling", "trésorerie", "treasury",
+            "m&a", "mergers and acquisitions", "fusions acquisitions", "investor relations"
+          ]
+        },
+        {
+          "canonical": "strategie",
+          "synonyms": [
+            "stratégie", "strategy", "cso", "chief strategy officer", "directeur stratégie",
+            "développement", "business development", "corporate development",
+            "transformation", "planning stratégique", "strategic planning"
+          ]
+        },
+        {
+          "canonical": "operations",
+          "synonyms": [
+            "opérations", "operations", "coo", "chief operating officer",
+            "directeur des opérations", "excellence opérationnelle", "operational excellence",
+            "lean", "performance industrielle", "process"
+          ]
+        },
+        {
+          "canonical": "supply_chain",
+          "synonyms": [
+            "supply chain", "chaîne d'approvisionnement", "logistique", "logistics",
+            "procurement", "achats", "sourcing", "csco", "chief supply chain officer",
+            "directeur supply chain", "directeur logistique", "planning"
+          ]
+        },
+        {
+          "canonical": "sop",
+          "synonyms": [
+            "s&op", "sop", "sales and operations planning", "ibp",
+            "integrated business planning", "demand planning", "planification"
+          ]
+        },
+        {
+          "canonical": "sales",
+          "synonyms": [
+            "sales", "ventes", "commercial", "cso", "chief sales officer",
+            "directeur commercial", "directeur des ventes", "key account",
+            "account management", "force de vente", "growth"
+          ]
+        }
+      ],
+      "P2": [],
+      "P3": []
+    }
+  }
+}

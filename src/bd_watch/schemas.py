@@ -33,6 +33,25 @@ class Relationship(str, Enum):
     EXISTING_CLIENT = "existing_client"
 
 
+# --- Step 01 raw output (file / JSONL format) -------------------------------- #
+@dataclass
+class RawSignal:
+    """Raw signal produced by a scraper, written to signals_output.jsonl.
+
+    Fields match the CLAUDE.md contract so the file is the handoff point between
+    the scraping module (Step 1) and the scoring module (Step 2).
+    """
+
+    company: str
+    sector: str           # canonical from targeting_matrix: "food" | "retail" | … | "unknown"
+    geography: str        # "france" | "noram" | "north_east_asia" | … | "unknown"
+    contact_function: str # "supply_chain" | "marketing" | … | "unknown"
+    trigger: str          # short description of the signal
+    source: str           # "MergerMarket" | "Les Echos" | …
+    date: str             # ISO yyyy-mm-dd
+    url: str = ""         # source URL (optional)
+
+
 # --- Step 01 → 02 ----------------------------------------------------------- #
 @dataclass
 class Trigger:

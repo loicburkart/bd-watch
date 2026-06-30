@@ -34,6 +34,24 @@ uv run python -m bd_watch.pipeline     # run the pipeline on sample data
 uv run pytest                          # run the test suite
 ```
 
+### Nominations scraper (Step 01 — RSS)
+
+```bash
+cd nominations_module
+python nominations_scraper.py --dry-run   # fetch + display, no file written
+python nominations_scraper.py             # writes output/nominations_today.json
+```
+
+### MergerMarket scraper (Step 01 — disabled by default)
+
+Set `MERGERMARKET_ENABLED=true` in `.env` to activate, then:
+
+```bash
+uv run playwright install chromium
+uv run python -m bd_watch.scrapers.mergermarket --setup   # log in once
+uv run python -m bd_watch.scrapers.mergermarket --scrape
+```
+
 The Python version is pinned in `.python-version`; `uv` fetches it automatically.
 Dependencies are locked in `uv.lock` — commit it, and run `uv lock` after changing
 `pyproject.toml`.

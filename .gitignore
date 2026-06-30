@@ -30,3 +30,7 @@ htmlcov/
 # Local data (keep samples, ignore scratch)
 data/scratch/
 *.local.json
+
+# Playwright Chrome profile (session cookies — never commit)
+chrome_profile/
+.bd-watch/
