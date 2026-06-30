@@ -37,9 +37,9 @@ Le module reçoit un objet JSON unique. Les autres étapes du pipeline le rempli
       "Practice Data composée de 40+ consultants spécialisés."
     ],
     "sender": {
-      "name": "Loïc Burkart",
-      "title": "Partner, Emerton Data",
-      "email": "loic.burkart@emerton-data.com"
+      "name": "[Sender Name]",
+      "title": "[Sender Title], Emerton Data",
+      "email": "sender@emerton-data.com"
     },
     "credentials_url": "https://..."
   },
@@ -154,7 +154,7 @@ Produis le JSON.
 {
   "email": {
     "subject": "Félicitations — et un retour terrain data/retail",
-    "body": "Bonjour Marie,\n\nFélicitations pour votre nomination comme CDO d'Acme Retail. Les premiers mois fixent souvent la trajectoire data des années suivantes.\n\nNous avons récemment aidé un distributeur européen à transformer son pricing chaîne d'appro — +12% de marge sur le périmètre concerné. Le type de quick win qui crédibilise une feuille de route data en interne.\n\nSeriez-vous ouverte à un échange de 15 minutes sur vos priorités des 100 premiers jours ?\n\nBien à vous,\nLoïc Burkart — Partner, Emerton Data",
+    "body": "Bonjour Marie,\n\nFélicitations pour votre nomination comme CDO d'Acme Retail. Les premiers mois fixent souvent la trajectoire data des années suivantes.\n\nNous avons récemment aidé un distributeur européen à transformer son pricing chaîne d'appro — +12% de marge sur le périmètre concerné. Le type de quick win qui crédibilise une feuille de route data en interne.\n\nSeriez-vous ouverte à un échange de 15 minutes sur vos priorités des 100 premiers jours ?\n\nBien à vous,\n[Sender Name] — [Sender Title], Emerton Data",
     "cta": "Échange de 15 min sur les priorités des 100 premiers jours."
   },
   "linkedin": {

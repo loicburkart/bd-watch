@@ -1,3 +1,8 @@
-# Dependencies are declared in pyproject.toml.
-# Install with:  uv sync
-# Dev extras:    uv sync --extra dev
+# Core
+anthropic>=0.40.0
+python-dotenv>=1.0.0
+openpyxl>=3.1.0          # activation feeder: reading .xlsx CRM exports
+
+# Dev (optional)
+pytest>=8.0.0
+ruff>=0.6.0

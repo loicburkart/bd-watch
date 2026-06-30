@@ -26,11 +26,24 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+.fuse_hidden*
 
 # Local data (keep samples, ignore scratch)
 data/scratch/
 *.local.json
 
+# Generated review outputs (may contain real client data)
+reviews/
+
+# Real CRM exports — client data, never commit
+Deal_Reminders_vLightNoEmail.xlsx
+Deal_Reminders_v5NoEmails.xlsx
+Deal_Reminders_*.xlsx
+
+# Excel lock/temp + local client data exports (never commit)
+~$*
+/Deal_Reminders_*.xlsx
+/Lost_Deals_*.xlsx
 # Triggers module — runtime outputs (never commit live data)
 triggers_module/output/*.json
 

@@ -1,7 +1,8 @@
 {
-  "tone": "professional, direct, warm, no salesy jargon",
+  "tone": "formel, corporate, sobre et précis ; registre d'un partner senior s'adressant à un dirigeant ; vouvoiement ; sans jargon commercial ni familiarité",
   "past_messages": [
-    "Hi {name}, saw the news about {company} — congratulations. We've done similar work in your sector; happy to share a quick field note if useful.",
-    "Hi {name}, it's been a while since we spoke. A recent project reminded me of your situation at {company} — worth a 15-minute catch-up?"
+    "Bonjour Madame Martin, je fais suite à notre échange du 12 mars concernant la feuille de route data de vos équipes. Nous restons à votre disposition pour en reprendre le fil au moment qui conviendra à votre agenda. Bien à vous,",
+    "Bonjour Monsieur Durand, dans le prolongement de la présentation du 5 février, je souhaitais faire un point sur les prochaines étapes envisagées. Seriez-vous disponible pour un bref échange la semaine prochaine ? Bien cordialement,",
+    "Bonjour Madame Lefèvre, nous avons pris connaissance de votre appel d'offres relatif à la gouvernance des données. Nos équipes finalisent une réponse alignée sur le périmètre décrit ; nous reviendrons vers vous avant transmission formelle. Bien à vous,"
   ]
 }

@@ -116,12 +116,23 @@ class StyleReference:
 
 @dataclass
 class DraftRequest:
-    """Everything step 04 needs to draft a message."""
+    """Everything step 04 needs to draft a message.
+
+    ``contact`` carries the shared deal context (company, role, relationship, language).
+    ``recipients`` lists the individual people on the deal: the email is one shared
+    message greeting all of them, while LinkedIn is sent 1-to-1, one message per name.
+    Defaults to the single contact when not set explicitly.
+    """
 
     trigger: Trigger
     contact: ContactProfile
     assets: EmertonAssets
     style: StyleReference = field(default_factory=StyleReference)
+    recipients: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.recipients:
+            self.recipients = [self.contact.full_name]
 
 
 # --- Step 04 → 05 ----------------------------------------------------------- #
@@ -133,11 +144,23 @@ class Email:
 
 
 @dataclass
+class LinkedInDraft:
+    """A 1-to-1 LinkedIn message for a single recipient."""
+
+    recipient: str
+    message: str
+
+
+@dataclass
 class OutreachDraft:
-    """The drafted outputs plus review metadata."""
+    """The drafted outputs plus review metadata.
+
+    One shared ``email`` addressed to all recipients; ``linkedin`` holds one message
+    per recipient (LinkedIn is strictly 1-to-1).
+    """
 
     email: Email
-    linkedin_message: str
+    linkedin: list[LinkedInDraft]
     rationale: str
     confidence: str  # high | medium | low
     flags: list[str] = field(default_factory=list)

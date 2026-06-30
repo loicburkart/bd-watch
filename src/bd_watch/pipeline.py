@@ -1,6 +1,10 @@
 """Pipeline orchestrator + CLI entrypoint.
 
-Wires the steps together: watch -> qualify -> contact -> draft -> review.
+Architecture: two feeders, one drafter.
+
+    cold_feeder ─┐
+                 ├─> DraftRequest ─> step04_draft.draft ─> step05_review.review
+    activation ──┘
 
 Run:
     python -m bd_watch.pipeline                # full pipeline
@@ -9,6 +13,9 @@ Run:
 
 from __future__ import annotations
 
+from .feeders import activation_feeder, cold_feeder
+from .schemas import DraftRequest, ReviewedOutreach
+from .steps import step04_draft, step05_review
 import argparse
 import sys
 
@@ -23,20 +30,16 @@ from .steps import (
 )
 
 
-def run() -> list[ReviewedOutreach]:
-    """Run the full pipeline on whatever step 01 surfaces."""
-    assets = load_emerton_assets()
-    style = load_style_reference()
+def gather_requests() -> list[DraftRequest]:
+    """Collect draft requests from every feeder."""
+    return cold_feeder() + activation_feeder()
 
-    results: list[ReviewedOutreach] = []
-    for qt in step02_qualify.qualify(step01_watch.detect_triggers()):
-        contact = step03_contact.identify_contact(qt)
-        request = DraftRequest(
-            trigger=qt.trigger, contact=contact, assets=assets, style=style
-        )
-        draft = step04_draft.draft(request)
-        results.append(step05_review.review(draft))
-    return results
+
+def run() -> list[ReviewedOutreach]:
+    """Run the full pipeline: feeders -> drafter -> review."""
+    return [
+        step05_review.review(step04_draft.draft(req)) for req in gather_requests()
+    ]
 
 
 def _print_qualified(qualified: list[QualifiedTrigger]) -> None:
@@ -84,9 +87,10 @@ def main() -> None:
     for i, r in enumerate(results, 1):
         d = r.draft
         print(f"=== Item {i} | decision: {r.decision} ===")
-        print(f"To      : {d.email.subject}")
+        print(f"Subject : {d.email.subject}")
         print(f"Email   :\n{d.email.body}\n")
-        print(f"LinkedIn: {d.linkedin_message}")
+        for li in d.linkedin:
+            print(f"LinkedIn → {li.recipient}: {li.message}")
         print(f"Review  : confidence={d.confidence}, flags={d.flags or 'none'}")
         if r.notes:
             print(f"Notes   : {r.notes}")
