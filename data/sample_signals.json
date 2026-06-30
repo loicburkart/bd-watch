@@ -1,0 +1,55 @@
+{
+  "france_agentforce_expansion": {
+    "signal_id": "sig_001",
+    "type": "press_release",
+    "target_organization": {
+      "name": "Salesforce",
+      "domain": "salesforce.com",
+      "country": "FR"
+    },
+    "context": {
+      "summary": "Salesforce annonce un investissement de 2 milliards de dollars en France jusqu'en 2030 afin d'accélérer l'adoption d'Agentforce et ouvre un AI Innovation Hub à Paris.",
+      "topic": "ai_expansion",
+      "named_person": null,
+      "source_url": "https://www.salesforce.com/news/press-releases/2026/06/01/2-billion-ai-transformation-investment-france/",
+      "date": "2026-06-01"
+    },
+    "business_need": {
+      "category": "ai_opportunity_qualification",
+      "reason": "L'ouverture d'un nouveau marché IA implique un fort volume de comptes à identifier, qualifier et accompagner vers Agentforce."
+    }
+  },
+  "new_cdo_fleury_michon": {
+    "signal_id": "sig_001",
+    "type": "executive_hire",
+    "target_organization": {
+      "name": "Fleury Michon",
+      "domain": "fleurymichon.fr",
+      "country": "FR"
+    },
+    "context": {
+      "summary": "Fleury Michon a nommé Sébastien Gautier au poste de Directeur Data Groupe (CDO). Ancien responsable des activités Data de Talan Nantes, il rejoint l'entreprise pour piloter sa stratégie Data à l'échelle du groupe.",
+      "topic": "executive_hiring",
+      "named_person": "Sébastien Gautier",
+      "named_person_title": "Directeur Data Groupe (CDO)",
+      "source_url": "https://www.republikgroup.com/articles/130382ee-805e-f111-8fca-000d3a3a75fd/sebastien-gautier-nomme-cdo-de-fleury-michon",
+      "date": "2026-06-04"
+    },
+    "company_context": {
+      "employees": 3300,
+      "revenue_eur": 836400000,
+      "production_sites": 11,
+      "industry": "Food & Beverage",
+      "headquarters_region": "Vendée, France"
+    },
+    "business_need": {
+      "category": "data_transformation",
+      "reason": "La création ou le renforcement d'une direction Data au niveau groupe est généralement un indicateur de futurs projets liés à la gouvernance des données, à la modernisation des plateformes Data, à l'IA, au reporting et à l'industrialisation des usages analytiques."
+    },
+    "sales_opportunity": {
+      "priority": "high",
+      "relevance_score": 0.89,
+      "recommended_pitch": "Accompagnement CDO, gouvernance Data, Data Platform, Data Quality, Master Data Management, Data Catalog, IA générative, Data Mesh, conduite du changement Data."
+    }
+  }
+}

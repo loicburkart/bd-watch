@@ -44,3 +44,9 @@ Deal_Reminders_*.xlsx
 ~$*
 /Deal_Reminders_*.xlsx
 /Lost_Deals_*.xlsx
+# Triggers module — runtime outputs (never commit live data)
+triggers_module/output/*.json
+
+# Playwright Chrome profile (session cookies — never commit)
+chrome_profile/
+.bd-watch/
